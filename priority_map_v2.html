@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Climate Migration Priorities</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f8;min-height:100vh;}
+
+.screen{display:none;flex-direction:column;height:100vh;}
+.screen.active{display:flex;}
+
+.header{background:#2c3e50;color:white;padding:18px 28px;flex-shrink:0;}
+.header h1{font-size:20px;font-weight:600;margin-bottom:3px;}
+.header p{font-size:13px;opacity:0.8;}
+
+/* ── Budget bar ── */
+.budget-bar-wrap{background:white;border-radius:8px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.budget-label{font-size:14px;font-weight:600;color:#2c3e50;}
+.budget-remaining{font-size:22px;font-weight:700;color:#2980b9;}
+.budget-remaining.zero{color:#27ae60;}
+.budget-track{height:10px;background:#ecf0f1;border-radius:5px;overflow:hidden;}
+.budget-fill{height:100%;background:#2980b9;border-radius:5px;transition:width 0.2s,background 0.2s;}
+.budget-fill.zero{background:#27ae60;}
+.budget-subtext{font-size:12px;color:#7f8c8d;margin-top:6px;}
+
+/* ── Section headers ── */
+.section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#7f8c8d;margin:20px 0 10px;}
+
+/* ── Factor cards ── */
+.factors-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:680px){.factors-grid{grid-template-columns:1fr;}}
+.factor-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;}
+.factor-card.has-points{border-color:#2980b9;}
+.factor-card.disabled-card{opacity:0.45;pointer-events:none;}
+.factor-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.factor-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.factor-points{font-size:20px;font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.factor-desc{font-size:12px;color:#7f8c8d;margin-bottom:10px;line-height:1.4;}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#ecf0f1;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+input[type=range]:disabled{opacity:0.35;cursor:not-allowed;}
+input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
+
+/* ── Special: urbanization card ── */
+.urban-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;grid-column:1/-1;}
+.urban-card.has-points{border-color:#2980b9;}
+.urban-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.urban-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.urban-pts{font-size:20px;font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.urban-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
+.urban-choices{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.urban-choice{flex:1;min-width:100px;padding:9px 12px;border:2px solid #dde1e7;border-radius:6px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:#5a6c7d;transition:all 0.15s;background:white;}
+.urban-choice:hover{border-color:#2980b9;color:#2980b9;}
+.urban-choice.selected{border-color:#2980b9;background:#2980b9;color:white;}
+
+/* ── Special: politics card ── */
+.politics-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;grid-column:1/-1;}
+.politics-card.has-points{border-color:#2980b9;}
+.politics-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.politics-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.politics-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
+.politics-choices{display:flex;gap:10px;margin-bottom:14px;}
+.politics-choice{flex:1;padding:9px 12px;border:2px solid #dde1e7;border-radius:6px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:#5a6c7d;transition:all 0.15s;background:white;}
+.politics-choice:hover{border-color:#8e44ad;color:#8e44ad;}
+.politics-choice.selected{border-color:#8e44ad;background:#8e44ad;color:white;}
+.politics-sliders{display:none;gap:14px;flex-direction:column;}
+.politics-sliders.visible{display:flex;}
+.pol-slider-row{display:flex;flex-direction:column;gap:4px;}
+.pol-slider-label{display:flex;justify-content:space-between;align-items:center;}
+.pol-slider-name{font-size:13px;font-weight:600;color:#2c3e50;}
+.pol-slider-pts{font-size:16px;font-weight:700;color:#8e44ad;}
+.pol-slider-sub{font-size:11px;color:#7f8c8d;margin-bottom:4px;}
+input[type=range].purple::-webkit-slider-thumb{background:#8e44ad;}
+input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
+
+/* ── Footer ── */
+.footer-bar{background:white;border-top:1px solid #ddd;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.footer-hint{font-size:13px;color:#7f8c8d;}
+.btn{padding:11px 26px;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s;}
+.btn-primary{background:#2980b9;color:white;}
+.btn-primary:hover{background:#2471a3;}
+.btn-primary:disabled{background:#bdc3c7;cursor:not-allowed;}
+.btn-success{background:#27ae60;color:white;}
+.btn-success:hover{background:#229954;}
+
+/* ── Screen 2 map ── */
+#screen2 .header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.map-wrap{flex:1;position:relative;min-height:0;}
+#map{width:100%;height:100%;}
+.legend{position:absolute;bottom:28px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:160px;}
+.legend-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
+.legend-gradient{height:12px;border-radius:3px;background:linear-gradient(to right,#d73027,#f46d43,#fdae61,#fee090,#ffffbf,#e0f3f8,#abd9e9,#74add1,#4575b4);margin-bottom:6px;}
+.legend-labels{display:flex;justify-content:space-between;font-size:11px;color:#7f8c8d;}
+.weights-summary{position:absolute;top:12px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);max-width:210px;}
+.weights-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
+.weight-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:12px;}
+.weight-name{color:#5a6c7d;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.weight-val{font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.weight-bar-bg{height:4px;background:#ecf0f1;border-radius:2px;margin-bottom:5px;}
+.weight-bar-fill{height:4px;background:#2980b9;border-radius:2px;}
+.success-message{display:none;padding:9px 14px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px;color:#155724;font-size:13px;font-weight:600;}
+.success-message.show{display:block;}
+.leaflet-tooltip.cell-tooltip{background:rgba(30,30,30,0.88);border:none;border-radius:5px;color:white;font-size:12px;padding:7px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.3);}
+.tt-score{font-size:16px;font-weight:700;margin-bottom:4px;}
+.tt-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;opacity:0.85;}
+
+#screen1 .body{flex:1;overflow-y:auto;padding:20px 28px 10px;}
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1 -->
+<div class="screen active" id="screen1">
+  <div class="header">
+    <h1>Set Your Priorities</h1>
+    <p>You have 200 points to allocate. Assign more points to factors that matter most to you.</p>
+  </div>
+  <div class="body">
+
+    <div class="budget-bar-wrap">
+      <div class="budget-header">
+        <span class="budget-label">Points Remaining</span>
+        <span class="budget-remaining" id="budgetDisplay">100</span>
+      </div>
+      <div class="budget-track"><div class="budget-fill" id="budgetFill" style="width:100%"></div></div>
+      <div class="budget-subtext" id="budgetSubtext">Allocate all 100 points to continue.</div>
+    </div>
+
+    <!-- Climate hazards -->
+    <div class="section-label">Climate Hazards</div>
+    <div class="factors-grid" id="hazardGrid"></div>
+
+    <!-- Cost of living -->
+    <div class="section-label">Cost of Living</div>
+    <div class="factors-grid" id="costGrid"></div>
+
+    <!-- Urbanization -->
+    <div class="section-label">Place Type Preference</div>
+    <div class="factors-grid" id="urbanGrid"></div>
+
+    <!-- Politics -->
+    <div class="section-label">Political Environment</div>
+    <div class="factors-grid" id="politicsGrid"></div>
+
+  </div>
+  <div class="footer-bar">
+    <span class="footer-hint" id="footerHint">0 of 100 points allocated</span>
+    <button class="btn btn-primary" id="proceedBtn" disabled>See My Map &rarr;</button>
+  </div>
+</div>
+
+<!-- SCREEN 2 -->
+<div class="screen" id="screen2">
+  <div class="header">
+    <div>
+      <h1>Your Personalized Climate Suitability Map</h1>
+      <p>Based on your priorities &mdash; blue = more suitable, red = less suitable</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="backBtn" style="padding:8px 18px;font-size:13px;">&#8592; Adjust Priorities</button>
+      <button class="btn btn-success" id="submitBtn">Submit &amp; Continue</button>
+      <div class="success-message" id="successMsg">Saved!</div>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="weights-summary" id="weightsSummary"></div>
+    <div class="legend">
+      <div class="legend-title">Suitability Score</div>
+      <div class="legend-gradient"></div>
+      <div class="legend-labels"><span>Low</span><span>High</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var isEmbedded = window.self !== window.top;
+var BUDGET = 200;
+
+// ── Variable definitions ──────────────────────────────────────────────────
+// direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
+var HAZARDS = [
+  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher raw value = greater risk.',   direction: -1 },
+  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher raw value = greater risk.',              direction: -1 },
+  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher raw value = greater risk.',                     direction: -1 },
+  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher raw value = greater risk.',     direction: -1 }
+];
+
+var COST = [
+  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher raw value = more expensive.', direction: -1 }
+];
+
+// Urbanization: one slider, radio selects which variable gets the weight
+var URBAN_OPTIONS = [
+  { id: 'urban',    label: 'Urban',    desc: 'Prefer cities and dense metro areas.' },
+  { id: 'suburban', label: 'Suburban', desc: 'Prefer suburban communities.' },
+  { id: 'rural',    label: 'Rural',    desc: 'Prefer rural or small-town settings.' }
+];
+var urbanChoice = null;   // 'urban' | 'suburban' | 'rural'
+var urbanWeight = 0;
+
+// Politics: two sliders, direction flips based on ideology
+// election_diff and state_election_diff = % lead by Democrats
+// Liberal: higher value = more desirable (direction +1)
+// Conservative: invert — higher Dem lead = less desirable (direction -1 => 1 - value)
+var politicsAlignment = null; // 'liberal' | 'conservative'
+var politicsWeights = { election_diff: 0, state_election_diff: 0 };
+
+// Standard factor weights
+var weights = {};
+HAZARDS.concat(COST).forEach(function(f){ weights[f.id] = 0; });
+
+// ── Build hazard cards ────────────────────────────────────────────────────
+function buildSliderCard(container, factorList) {
+  factorList.forEach(function(f) {
+    var card = document.createElement('div');
+    card.className = 'factor-card';
+    card.id = 'card-' + f.id;
+    card.innerHTML =
+      '<div class="factor-top">' +
+        '<div class="factor-name">' + f.label + '</div>' +
+        '<div class="factor-points" id="pts-' + f.id + '">0</div>' +
+      '</div>' +
+      '<div class="factor-desc">' + f.desc + '</div>' +
+      '<input type="range" min="0" max="100" value="0" id="slider-' + f.id + '" />';
+    container.appendChild(card);
+
+    document.getElementById('slider-' + f.id).addEventListener('input', function() {
+      var newVal = parseInt(this.value);
+      var otherSum = getTotalAllocated(f.id);
+      var maxAllowed = BUDGET - otherSum;
+      if (newVal > maxAllowed) { newVal = maxAllowed; this.value = newVal; }
+      weights[f.id] = newVal;
+      updateAllUI();
+    });
+  });
+}
+
+buildSliderCard(document.getElementById('hazardGrid'), HAZARDS);
+buildSliderCard(document.getElementById('costGrid'), COST);
+
+// ── Urbanization card ─────────────────────────────────────────────────────
+(function() {
+  var grid = document.getElementById('urbanGrid');
+  var card = document.createElement('div');
+  card.className = 'urban-card';
+  card.id = 'card-urban-group';
+  card.innerHTML =
+    '<div class="urban-top">' +
+      '<div class="urban-name">Place Type</div>' +
+      '<div class="urban-pts" id="pts-urban-group">0</div>' +
+    '</div>' +
+    '<div class="urban-desc">Select the type of place you prefer to live, then allocate points based on how important this is to you.</div>' +
+    '<div class="urban-choices">' +
+      URBAN_OPTIONS.map(function(o) {
+        return '<div class="urban-choice" id="uchoice-' + o.id + '" data-id="' + o.id + '">' +
+          '<div style="font-size:13px;font-weight:600">' + o.label + '</div>' +
+          '<div style="font-size:11px;font-weight:400;opacity:0.8;margin-top:2px">' + o.desc + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<div id="urban-slider-wrap" style="display:none">' +
+      '<input type="range" min="0" max="100" value="0" id="slider-urban-group" />' +
+    '</div>';
+  grid.appendChild(card);
+
+  // Choice buttons
+  URBAN_OPTIONS.forEach(function(o) {
+    document.getElementById('uchoice-' + o.id).addEventListener('click', function() {
+      urbanChoice = o.id;
+      URBAN_OPTIONS.forEach(function(x) {
+        document.getElementById('uchoice-' + x.id).classList.toggle('selected', x.id === o.id);
+      });
+      document.getElementById('urban-slider-wrap').style.display = 'block';
+      updateAllUI();
+    });
+  });
+
+  document.getElementById('slider-urban-group').addEventListener('input', function() {
+    var newVal = parseInt(this.value);
+    var otherSum = getTotalAllocated('__urban__');
+    var maxAllowed = BUDGET - otherSum;
+    if (newVal > maxAllowed) { newVal = maxAllowed; this.value = newVal; }
+    urbanWeight = newVal;
+    updateAllUI();
+  });
+})();
+
+// ── Politics card ─────────────────────────────────────────────────────────
+(function() {
+  var grid = document.getElementById('politicsGrid');
+  var card = document.createElement('div');
+  card.className = 'politics-card';
+  card.id = 'card-politics-group';
+  card.innerHTML =
+    '<div class="politics-top">' +
+      '<div class="politics-name">Political Environment</div>' +
+    '</div>' +
+    '<div class="politics-desc">How would you describe your political views? This determines how local and state election results factor into your suitability score.</div>' +
+    '<div class="politics-choices">' +
+      '<div class="politics-choice" id="pchoice-liberal" data-id="liberal">More Liberal</div>' +
+      '<div class="politics-choice" id="pchoice-conservative" data-id="conservative">More Conservative</div>' +
+    '</div>' +
+    '<div class="politics-sliders" id="politics-sliders-wrap">' +
+      '<div class="pol-slider-row">' +
+        '<div class="pol-slider-label">' +
+          '<span class="pol-slider-name">County-level elections</span>' +
+          '<span class="pol-slider-pts" id="pts-election_diff">0</span>' +
+        '</div>' +
+        '<div class="pol-slider-sub">How much do you prioritize the political lean of the specific county?</div>' +
+        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-election_diff" />' +
+      '</div>' +
+      '<div class="pol-slider-row">' +
+        '<div class="pol-slider-label">' +
+          '<span class="pol-slider-name">State-level elections</span>' +
+          '<span class="pol-slider-pts" id="pts-state_election_diff">0</span>' +
+        '</div>' +
+        '<div class="pol-slider-sub">How much do you prioritize the political lean of the state overall?</div>' +
+        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-state_election_diff" />' +
+      '</div>' +
+    '</div>';
+  grid.appendChild(card);
+
+  ['liberal','conservative'].forEach(function(id) {
+    document.getElementById('pchoice-' + id).addEventListener('click', function() {
+      politicsAlignment = id;
+      ['liberal','conservative'].forEach(function(x) {
+        document.getElementById('pchoice-' + x).classList.toggle('selected', x === id);
+      });
+      document.getElementById('politics-sliders-wrap').classList.add('visible');
+      updateAllUI();
+    });
+  });
+
+  ['election_diff','state_election_diff'].forEach(function(id) {
+    document.getElementById('slider-' + id).addEventListener('input', function() {
+      var newVal = parseInt(this.value);
+      var otherSum = getTotalAllocated('__pol_' + id + '__');
+      var maxAllowed = BUDGET - otherSum;
+      if (newVal > maxAllowed) { newVal = maxAllowed; this.value = newVal; }
+      politicsWeights[id] = newVal;
+      updateAllUI();
+    });
+  });
+})();
+
+// ── Budget helpers ────────────────────────────────────────────────────────
+// Returns total allocated EXCLUDING the given id (pass special token for group items)
+function getTotalAllocated(excludeId) {
+  var total = 0;
+  HAZARDS.concat(COST).forEach(function(f) {
+    if (f.id !== excludeId) total += weights[f.id];
+  });
+  if (excludeId !== '__urban__') total += urbanWeight;
+  if (excludeId !== '__pol_election_diff__') total += politicsWeights.election_diff;
+  if (excludeId !== '__pol_state_election_diff__') total += politicsWeights.state_election_diff;
+  return total;
+}
+
+function getTotalAllocatedAll() {
+  var total = 0;
+  HAZARDS.concat(COST).forEach(function(f){ total += weights[f.id]; });
+  total += urbanWeight;
+  total += politicsWeights.election_diff + politicsWeights.state_election_diff;
+  return total;
+}
+
+// ── Update all UI ─────────────────────────────────────────────────────────
+function updateSliderFill(slider, value) {
+  var pct = value;
+  slider.style.background = 'linear-gradient(to right, #2980b9 0%, #2980b9 ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
+}
+
+function updateSliderFillPurple(slider, value) {
+  var pct = value;
+  slider.style.background = 'linear-gradient(to right, #8e44ad 0%, #8e44ad ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
+}
+
+function updateAllUI() {
+  var allocated = getTotalAllocatedAll();
+  var remaining = BUDGET - allocated;
+
+  // Budget bar
+  var bd = document.getElementById('budgetDisplay');
+  var bf = document.getElementById('budgetFill');
+  bd.textContent = remaining;
+  bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : '');
+  bf.style.width = remaining + '%';
+  bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : '');
+  document.getElementById('budgetSubtext').textContent = remaining === 0
+    ? 'All points allocated. You can proceed.'
+    : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 200 to continue.';
+  document.getElementById('footerHint').textContent = allocated + ' of 200 points allocated';
+
+  // Proceed: all 100 spent AND urbanization choice made AND politics alignment chosen (if any points assigned)
+  var urbanOk = urbanWeight === 0 || urbanChoice !== null;
+  var politicsOk = (politicsWeights.election_diff === 0 && politicsWeights.state_election_diff === 0) || politicsAlignment !== null;
+  document.getElementById('proceedBtn').disabled = (remaining !== 0 || !urbanOk || !politicsOk);
+
+  // Standard factor cards
+  HAZARDS.concat(COST).forEach(function(f) {
+    var v = weights[f.id];
+    document.getElementById('pts-' + f.id).textContent = v;
+    var slider = document.getElementById('slider-' + f.id);
+    slider.max = 100;
+    slider.value = v;
+    updateSliderFill(slider, v);
+    document.getElementById('card-' + f.id).className = 'factor-card' + (v > 0 ? ' has-points' : '');
+  });
+
+  // Urban group
+  var uSlider = document.getElementById('slider-urban-group');
+  uSlider.max = 100; uSlider.value = urbanWeight;
+  updateSliderFill(uSlider, urbanWeight);
+  document.getElementById('pts-urban-group').textContent = urbanWeight;
+  document.getElementById('card-urban-group').className = 'urban-card' + (urbanWeight > 0 ? ' has-points' : '');
+
+  // Politics sliders
+  ['election_diff','state_election_diff'].forEach(function(id) {
+    var v = politicsWeights[id];
+    var slider = document.getElementById('slider-' + id);
+    slider.max = 100; slider.value = v;
+    updateSliderFillPurple(slider, v);
+    document.getElementById('pts-' + id).textContent = v;
+  });
+  var polTotal = politicsWeights.election_diff + politicsWeights.state_election_diff;
+  document.getElementById('card-politics-group').className = 'politics-card' + (polTotal > 0 ? ' has-points' : '');
+}
+
+updateAllUI();
+
+// ── Map ───────────────────────────────────────────────────────────────────
+var map = null, gridLayer = null, geojsonData = null;
+
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+  }).addTo(map);
+}
+
+fetch('grid.geojson')
+  .then(function(r) { return r.json(); })
+  .then(function(d) { geojsonData = d; })
+  .catch(function(e) { console.error('Failed to load grid.geojson:', e); });
+
+var COLOR_STOPS = [
+  [0.000,'#d73027'],[0.125,'#f46d43'],[0.250,'#fdae61'],[0.375,'#fee090'],
+  [0.500,'#ffffbf'],[0.625,'#e0f3f8'],[0.750,'#abd9e9'],[0.875,'#74add1'],[1.000,'#4575b4']
+];
+function interpolateColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  for (var i = 0; i < COLOR_STOPS.length - 1; i++) {
+    var t0=COLOR_STOPS[i][0], t1=COLOR_STOPS[i+1][0];
+    if (t >= t0 && t <= t1) {
+      var f=(t-t0)/(t1-t0);
+      var parse=function(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; };
+      var c0=parse(COLOR_STOPS[i][1]), c1=parse(COLOR_STOPS[i+1][1]);
+      return 'rgb('+[0,1,2].map(function(j){ return Math.round(c0[j]+f*(c1[j]-c0[j])); }).join(',')+')';
+    }
+  }
+  return COLOR_STOPS[COLOR_STOPS.length-1][1];
+}
+
+function computeComposite(props) {
+  var total = 0, wsum = 0;
+
+  // Hazards + cost (invert: direction = -1)
+  HAZARDS.concat(COST).forEach(function(f) {
+    var w = weights[f.id] / 100.0;
+    if (w === 0) return;
+    var raw = props[f.id] !== undefined ? props[f.id] : 0.5;
+    var oriented = 1 - raw; // direction -1
+    total += w * oriented; wsum += w;
+  });
+
+  // Urbanization: only the chosen variable
+  if (urbanWeight > 0 && urbanChoice) {
+    var w = urbanWeight / 100.0;
+    var raw = props[urbanChoice] !== undefined ? props[urbanChoice] : 0.5;
+    total += w * raw; wsum += w; // direction +1
+  }
+
+  // Politics: flip direction for conservatives
+  ['election_diff','state_election_diff'].forEach(function(id) {
+    var w = politicsWeights[id] / 100.0;
+    if (w === 0) return;
+    var raw = props[id] !== undefined ? props[id] : 0.5;
+    var oriented = politicsAlignment === 'conservative' ? (1 - raw) : raw;
+    total += w * oriented; wsum += w;
+  });
+
+  return wsum > 0 ? total / wsum : 0.5;
+}
+
+function renderMap() {
+  initMap();
+  if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
+
+  var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
+  var minS = Math.min.apply(null, scores), maxS = Math.max.apply(null, scores);
+
+  gridLayer = L.geoJSON(geojsonData, {
+    style: function(feature) {
+      var raw = computeComposite(feature.properties);
+      var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
+      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
+    },
+    onEachFeature: function(feature, layer) {
+      layer.on('mouseover', function(e) {
+        var props = feature.properties;
+        var comp = computeComposite(props);
+        var t = maxS > minS ? (comp - minS) / (maxS - minS) : 0.5;
+        // Top contributing vars for tooltip
+        var contribs = [];
+        HAZARDS.concat(COST).forEach(function(f) {
+          if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
+        });
+        if (urbanWeight > 0 && urbanChoice) {
+          contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
+        }
+        ['election_diff','state_election_diff'].forEach(function(id) {
+          if (politicsWeights[id] > 0) {
+            contribs.push({ label: id === 'election_diff' ? 'County elections' : 'State elections', w: politicsWeights[id], val: props[id] });
+          }
+        });
+        contribs.sort(function(a,b){ return b.w-a.w; });
+        var rows = contribs.slice(0,3).map(function(c){
+          return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
+        }).join('');
+        layer.bindTooltip('<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows,
+          { className: 'cell-tooltip', sticky: true }).openTooltip(e.latlng);
+        layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
+      });
+      layer.on('mouseout', function() {
+        layer.closeTooltip();
+        var raw = computeComposite(feature.properties);
+        var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
+        layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
+      });
+    }
+  }).addTo(map);
+
+  // Weights summary panel
+  var rows = [];
+  HAZARDS.concat(COST).forEach(function(f){ if (weights[f.id]>0) rows.push({label:f.label, w:weights[f.id]}); });
+  if (urbanWeight > 0 && urbanChoice) rows.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight });
+  if (politicsWeights.election_diff > 0) rows.push({ label: 'County elections', w: politicsWeights.election_diff });
+  if (politicsWeights.state_election_diff > 0) rows.push({ label: 'State elections', w: politicsWeights.state_election_diff });
+  rows.sort(function(a,b){ return b.w-a.w; });
+  var align = politicsAlignment ? ' <span style="font-size:10px;color:#8e44ad;font-weight:600">('+politicsAlignment+')</span>' : '';
+  document.getElementById('weightsSummary').innerHTML =
+    '<div class="weights-title">Your Weights</div>' +
+    rows.map(function(r){
+      return '<div class="weight-row"><span class="weight-name">'+r.label+'</span><span class="weight-val">'+r.w+'</span></div>' +
+             '<div class="weight-bar-bg"><div class="weight-bar-fill" style="width:'+r.w+'%"></div></div>';
+    }).join('') + align;
+
+  setTimeout(function(){ map.invalidateSize(); }, 50);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+document.getElementById('proceedBtn').addEventListener('click', function() {
+  document.getElementById('screen1').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  setTimeout(function() { renderMap(); }, 50);
+});
+document.getElementById('backBtn').addEventListener('click', function() {
+  document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
+
+// ── Submit ────────────────────────────────────────────────────────────────
+document.getElementById('submitBtn').addEventListener('click', function() {
+  var weightVector = {};
+  HAZARDS.concat(COST).forEach(function(f){ weightVector[f.id] = weights[f.id]; });
+  // Urban: only chosen variable gets weight
+  URBAN_OPTIONS.forEach(function(o){ weightVector[o.id] = (o.id === urbanChoice ? urbanWeight : 0); });
+  weightVector.election_diff = politicsWeights.election_diff;
+  weightVector.state_election_diff = politicsWeights.state_election_diff;
+
+  var payload = {
+    weights: weightVector,
+    urban_preference: urbanChoice,
+    political_alignment: politicsAlignment,
+    cell_scores: geojsonData ? geojsonData.features.map(function(feat){
+      return { cell_id: feat.properties.cell_id, composite_score: parseFloat(computeComposite(feat.properties).toFixed(4)) };
+    }) : []
+  };
+
+  if (isEmbedded) {
+    window.parent.postMessage({ type: 'priorityMapData', data: payload, dataString: JSON.stringify(payload), autoAdvance: true }, '*');
+    document.getElementById('successMsg').classList.add('show');
+    this.disabled = true; this.textContent = 'Submitted ✓'; this.style.background = '#95a5a6';
+  } else {
+    console.log('Payload:', JSON.stringify(payload, null, 2));
+    alert('Submitted! Weights and ' + payload.cell_scores.length + ' cell scores logged to console.');
+  }
+});
+</script>
+</body>
+</html>
