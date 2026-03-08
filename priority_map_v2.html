@@ -17,7 +17,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .header p{font-size:13px;opacity:0.8;}
 
 /* ── Budget bar ── */
-.budget-bar-wrap{background:white;border-radius:8px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.budget-sticky{background:#f4f6f8;padding:12px 28px 12px;flex-shrink:0;border-bottom:1px solid #ddd;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+.budget-bar-wrap{background:white;border-radius:8px;padding:14px 20px;margin-bottom:0;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
 .budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .budget-label{font-size:14px;font-weight:600;color:#2c3e50;}
 .budget-remaining{font-size:22px;font-weight:700;color:#2980b9;}
@@ -96,7 +97,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 .legend-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
 .legend-gradient{height:12px;border-radius:3px;background:linear-gradient(to right,#d73027,#f46d43,#fdae61,#fee090,#ffffbf,#e0f3f8,#abd9e9,#74add1,#4575b4);margin-bottom:6px;}
 .legend-labels{display:flex;justify-content:space-between;font-size:11px;color:#7f8c8d;}
-.weights-summary{position:absolute;top:12px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);max-width:210px;}
+.weights-summary{position:absolute;top:12px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);max-width:210px;max-height:calc(100vh - 120px);overflow-y:auto;}
 .weights-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
 .weight-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:12px;}
 .weight-name{color:#5a6c7d;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -109,7 +110,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 .tt-score{font-size:16px;font-weight:700;margin-bottom:4px;}
 .tt-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;opacity:0.85;}
 
-#screen1 .body{flex:1;overflow-y:auto;padding:20px 28px 10px;}
+#screen1 .body{flex:1;overflow-y:auto;padding:16px 28px 10px;}
 </style>
 </head>
 <body>
@@ -118,10 +119,9 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 <div class="screen active" id="screen1">
   <div class="header">
     <h1>Set Your Priorities</h1>
-    <p>You have 200 points to allocate. Assign more points to factors that matter most to you.</p>
+    <p>You have 100 points to allocate. Assign more points to factors that matter most to you.</p>
   </div>
-  <div class="body">
-
+  <div class="budget-sticky">
     <div class="budget-bar-wrap">
       <div class="budget-header">
         <span class="budget-label">Points Remaining</span>
@@ -130,6 +130,8 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
       <div class="budget-track"><div class="budget-fill" id="budgetFill" style="width:100%"></div></div>
       <div class="budget-subtext" id="budgetSubtext">Allocate all 100 points to continue.</div>
     </div>
+  </div>
+  <div class="body">
 
     <!-- Climate hazards -->
     <div class="section-label">Climate Hazards</div>
@@ -181,7 +183,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 var isEmbedded = window.self !== window.top;
-var BUDGET = 200;
+var BUDGET = 100;
 
 // ── Variable definitions ──────────────────────────────────────────────────
 // direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
@@ -391,12 +393,12 @@ function updateAllUI() {
   var bf = document.getElementById('budgetFill');
   bd.textContent = remaining;
   bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : '');
-  bf.style.width = remaining + '%';
+  bf.style.width = (remaining / BUDGET * 100) + '%';
   bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : '');
   document.getElementById('budgetSubtext').textContent = remaining === 0
     ? 'All points allocated. You can proceed.'
-    : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 200 to continue.';
-  document.getElementById('footerHint').textContent = allocated + ' of 200 points allocated';
+    : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 100 to continue.';
+  document.getElementById('footerHint').textContent = allocated + ' of 100 points allocated';
 
   // Proceed: all 100 spent AND urbanization choice made AND politics alignment chosen (if any points assigned)
   var urbanOk = urbanWeight === 0 || urbanChoice !== null;
