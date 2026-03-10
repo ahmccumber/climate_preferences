@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Climate Migration Priorities</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f8;min-height:100vh;}
@@ -194,6 +195,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   display: inline-block;
 }
 #mapEdit.paint-mode { cursor: crosshair; }
+.state-label{font-size:10px;font-weight:700;color:rgba(30,30,30,0.72);text-shadow:0 0 4px #fff,0 0 8px #fff;pointer-events:none;white-space:nowrap;line-height:1;}
 </style>
 </head>
 <body>
@@ -203,6 +205,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="header">
     <h1>Set Your Priorities</h1>
     <p>You have 100 points to allocate. Assign more points to factors that matter most to you.</p>
+    <p>The resulting map calculate an area's suitability to your preferences by weighting these factors proportionally.</p>
   </div>
   <div class="body">
 
@@ -282,6 +285,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="edit-instructions" id="editInstructions">
     <div class="instructions-box">
       <h2>Fine-Tune Your Map</h2>
+      <p>On this page you can make manual changes to your map to reflect any specific exceptions to the preferences you entered.</p>
       <p>Use the paint tool to manually raise or lower suitability scores for specific areas.</p>
       <ul>
         <li>Select <strong>Raise</strong> or <strong>Lower</strong></li>
@@ -318,7 +322,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
 // ── Paint / Edit screen variables ─────────────────────────────────────────
 var mapEdit = null, gridLayerEdit = null;
 var paintActive = false, isPainting = false, paintMode = 'raise';
@@ -417,6 +422,7 @@ function renderEditMap() {
       layer.on('mouseup', stopPainting);
     }
   }).addTo(mapEdit);
+  addStateOverlay(mapEdit);
 
   gridLayerEdit.eachLayer(function(l) {
     l._paintScore = computeComposite(l.feature.properties);
@@ -514,14 +520,14 @@ var BUDGET = 100;
 // ── Variable definitions ──────────────────────────────────────────────────
 // direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
 var HAZARDS = [
-  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher raw value = greater risk.',   direction: -1 },
-  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher raw value = greater risk.',              direction: -1 },
-  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher raw value = greater risk.',                     direction: -1 },
-  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher raw value = greater risk.',     direction: -1 }
+  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher weight prioritizes safety from drought.',   direction: -1 },
+  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher weight prioritizes safety from wildfires.',              direction: -1 },
+  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher weight = prioritizes safety from floods.',                     direction: -1 },
+  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher weight prioritizes safety from storms.',     direction: -1 }
 ];
 
 var COST = [
-  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher raw value = more expensive.', direction: -1 }
+  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher weight prioritizes affordability', direction: -1 }
 ];
 
 // Weather: two cards, each with direction choice + stepper
@@ -842,6 +848,104 @@ function updateAllUI() {
 updateAllUI();
 
 // ── Map ───────────────────────────────────────────────────────────────────
+
+// ── State boundary + label overlay ───────────────────────────────────────
+var statesGeoJSON = null;
+
+var FIPS_NAMES = {
+  '01':'Alabama','02':'Alaska','04':'Arizona','05':'Arkansas','06':'California',
+  '08':'Colorado','09':'Connecticut','10':'Delaware','11':'District of Columbia',
+  '12':'Florida','13':'Georgia','15':'Hawaii','16':'Idaho','17':'Illinois',
+  '18':'Indiana','19':'Iowa','20':'Kansas','21':'Kentucky','22':'Louisiana',
+  '23':'Maine','24':'Maryland','25':'Massachusetts','26':'Michigan',
+  '27':'Minnesota','28':'Mississippi','29':'Missouri','30':'Montana',
+  '31':'Nebraska','32':'Nevada','33':'New Hampshire','34':'New Jersey',
+  '35':'New Mexico','36':'New York','37':'North Carolina','38':'North Dakota',
+  '39':'Ohio','40':'Oklahoma','41':'Oregon','42':'Pennsylvania',
+  '44':'Rhode Island','45':'South Carolina','46':'South Dakota',
+  '47':'Tennessee','48':'Texas','49':'Utah','50':'Vermont','51':'Virginia',
+  '53':'Washington','54':'West Virginia','55':'Wisconsin','56':'Wyoming'
+};
+var STATE_ABBR = {
+  'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
+  'Colorado':'CO','Connecticut':'CT','Delaware':'DE','District of Columbia':'DC',
+  'Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL',
+  'Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA',
+  'Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI',
+  'Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT',
+  'Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ',
+  'New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND',
+  'Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA',
+  'Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD',
+  'Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA',
+  'Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY'
+};
+var CENTROID_OVERRIDE = {
+  'Michigan':  [44.5, -84.5], 'Hawaii':   [20.5,-156.5],
+  'Alaska':    [64.2,-153.0], 'Louisiana':[31.2, -91.8],
+  'Maryland':  [39.0, -76.6], 'Delaware': [39.0, -75.5],
+  'Florida':   [28.5, -82.5]
+};
+
+function getStateCentroid(feature) {
+  var name = feature.properties.name || '';
+  if (CENTROID_OVERRIDE[name]) {
+    var o = CENTROID_OVERRIDE[name]; return L.latLng(o[0], o[1]);
+  }
+  var geom = feature.geometry;
+  var rings = geom.type === 'Polygon' ? [geom.coordinates[0]]
+    : geom.coordinates.map(function(p){ return p[0]; });
+  var ring = rings.reduce(function(a,b){ return b.length > a.length ? b : a; });
+  var lats = ring.map(function(c){ return c[1]; });
+  var lngs = ring.map(function(c){ return c[0]; });
+  return L.latLng(
+    (Math.min.apply(null,lats)+Math.max.apply(null,lats))/2,
+    (Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2
+  );
+}
+
+function addStateOverlay(targetMap) {
+  function render(geo) {
+    var pname = 'statesPane_'+L.stamp(targetMap);
+    if (!targetMap.getPane(pname)) {
+      targetMap.createPane(pname);
+      targetMap.getPane(pname).style.zIndex = 450;
+      targetMap.getPane(pname).style.pointerEvents = 'none';
+    }
+    // White boundary line
+    L.geoJSON(geo, {
+      pane: pname,
+      style: { color:'rgba(255,255,255,0.9)', weight:1.8, fill:false, interactive:false }
+    }).addTo(targetMap);
+    // Thin dark inner stroke for definition on light areas
+    L.geoJSON(geo, {
+      pane: pname,
+      style: { color:'rgba(60,60,60,0.22)', weight:0.6, fill:false, interactive:false }
+    }).addTo(targetMap);
+    // Abbreviation labels
+    geo.features.forEach(function(f) {
+      var abbr = STATE_ABBR[f.properties.name||''];
+      if (!abbr) return;
+      L.marker(getStateCentroid(f), {
+        pane: pname, interactive: false,
+        icon: L.divIcon({ className:'state-label', html:abbr, iconSize:[24,12], iconAnchor:[12,6] })
+      }).addTo(targetMap);
+    });
+  }
+  if (statesGeoJSON) { render(statesGeoJSON); return; }
+  fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json')
+    .then(function(r){ return r.json(); })
+    .then(function(topo) {
+      var geo = topojson.feature(topo, topo.objects.states);
+      geo.features.forEach(function(f){
+        f.properties.name = FIPS_NAMES[String(f.id).padStart(2,'0')] || '';
+      });
+      statesGeoJSON = geo;
+      render(statesGeoJSON);
+    })
+    .catch(function(e){ console.warn('State overlay failed:', e); });
+}
+
 var map = null, gridLayer = null, geojsonData = null;
 
 function initMap() {
@@ -923,6 +1027,35 @@ function renderMap() {
   var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
   var minS = Math.min.apply(null, scores), maxS = Math.max.apply(null, scores);
 
+  // Single shared tooltip on the map — avoids per-layer tooltip pile-up on drag
+  var sharedTip = L.tooltip({ className: 'cell-tooltip', sticky: false, permanent: false, offset: [12, 0] });
+  var mapDragging = false;
+  map.on('dragstart', function() { mapDragging = true; sharedTip.remove(); });
+  map.on('dragend',   function() { mapDragging = false; });
+
+  function buildTipContent(props, comp) {
+    var contribs = [];
+    HAZARDS.concat(COST).forEach(function(f) {
+      if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
+    });
+    WEATHER.forEach(function(wf) {
+      if (weatherWeights[wf.id] > 0) contribs.push({ label: wf.label, w: weatherWeights[wf.id], val: props[wf.id] });
+    });
+    if (urbanWeight > 0 && urbanChoice) {
+      contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
+    }
+    ['election_diff','state_election_diff'].forEach(function(id) {
+      if (politicsWeights[id] > 0) {
+        contribs.push({ label: id === 'election_diff' ? 'County elections' : 'State elections', w: politicsWeights[id], val: props[id] });
+      }
+    });
+    contribs.sort(function(a,b){ return b.w-a.w; });
+    var rows = contribs.slice(0,3).map(function(c){
+      return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
+    }).join('');
+    return '<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows;
+  }
+
   gridLayer = L.geoJSON(geojsonData, {
     style: function(feature) {
       var raw = computeComposite(feature.properties);
@@ -931,41 +1064,19 @@ function renderMap() {
     },
     onEachFeature: function(feature, layer) {
       layer.on('mouseover', function(e) {
-        var props = feature.properties;
-        var comp = computeComposite(props);
-        var t = maxS > minS ? (comp - minS) / (maxS - minS) : 0.5;
-        // Top contributing vars for tooltip
-        var contribs = [];
-        HAZARDS.concat(COST).forEach(function(f) {
-          if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
-        });
-        WEATHER.forEach(function(wf) {
-          if (weatherWeights[wf.id] > 0) contribs.push({ label: wf.label, w: weatherWeights[wf.id], val: props[wf.id] });
-        });
-        if (urbanWeight > 0 && urbanChoice) {
-          contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
-        }
-        ['election_diff','state_election_diff'].forEach(function(id) {
-          if (politicsWeights[id] > 0) {
-            contribs.push({ label: id === 'election_diff' ? 'County elections' : 'State elections', w: politicsWeights[id], val: props[id] });
-          }
-        });
-        contribs.sort(function(a,b){ return b.w-a.w; });
-        var rows = contribs.slice(0,3).map(function(c){
-          return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
-        }).join('');
-        if (!layer._tooltip) {
-          layer.bindTooltip('', { className: 'cell-tooltip', sticky: false, permanent: false });
-        }
-        layer.setTooltipContent('<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows);
-        layer.openTooltip(e.latlng);
+        if (mapDragging) return;
+        var comp = computeComposite(feature.properties);
+        sharedTip.setContent(buildTipContent(feature.properties, comp));
+        sharedTip.setLatLng(e.latlng);
+        sharedTip.addTo(map);
         layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
       });
       layer.on('mousemove', function(e) {
-        if (layer.isTooltipOpen()) layer.getTooltip().setLatLng(e.latlng);
+        if (mapDragging) return;
+        sharedTip.setLatLng(e.latlng);
       });
       layer.on('mouseout', function() {
-        layer.closeTooltip();
+        sharedTip.remove();
         var raw = computeComposite(feature.properties);
         var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
         layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
@@ -992,6 +1103,7 @@ function renderMap() {
     }).join('') + align;
 
   setTimeout(function(){ map.invalidateSize(); }, 50);
+  addStateOverlay(map);
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────
@@ -1152,6 +1264,7 @@ function renderEditMap() {
       layer.on('mouseup', stopPainting);
     }
   }).addTo(mapEdit);
+  addStateOverlay(mapEdit);
 
   gridLayerEdit.eachLayer(function(l) {
     l._paintScore = computeComposite(l.feature.properties);
