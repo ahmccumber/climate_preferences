@@ -25,6 +25,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .budget-track{height:10px;background:#ecf0f1;border-radius:5px;overflow:hidden;}
 .budget-fill{height:100%;background:#2980b9;border-radius:5px;transition:width 0.2s,background 0.2s;}
 .budget-fill.zero{background:#27ae60;}
+.budget-remaining.over{color:#e74c3c;}
+.budget-bar-wrap.over{background:#fdf2f2;border:1.5px solid #f5c6cb;}
+.budget-fill.over{background:#e74c3c;}
+.budget-subtext.over{color:#e74c3c;font-weight:600;}
 .budget-subtext{font-size:12px;color:#7f8c8d;margin-top:6px;}
 
 /* ── Section headers ── */
@@ -38,13 +42,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .factor-card.disabled-card{opacity:0.45;pointer-events:none;}
 .factor-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
 .factor-name{font-size:14px;font-weight:600;color:#2c3e50;}
-.factor-points{font-size:20px;font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
-.factor-desc{font-size:12px;color:#7f8c8d;margin-bottom:10px;line-height:1.4;}
-input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#ecf0f1;outline:none;cursor:pointer;}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
-input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
-input[type=range]:disabled{opacity:0.35;cursor:not-allowed;}
-input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
+.factor-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
+
+/* ── Stepper ── */
+.stepper{display:flex;align-items:center;border:1.5px solid #dde1e7;border-radius:7px;overflow:hidden;height:36px;}
+.stepper-btn{width:36px;height:36px;border:none;background:#f4f6f8;font-size:20px;cursor:pointer;color:#2c3e50;flex-shrink:0;transition:background 0.12s;display:flex;align-items:center;justify-content:center;}
+.stepper-btn:hover:not(:disabled){background:#dde1e7;}
+.stepper-btn:disabled{color:#bdc3c7;cursor:not-allowed;}
+.stepper-val{flex:1;text-align:center;font-size:18px;font-weight:700;color:#2980b9;background:white;border-left:1.5px solid #dde1e7;border-right:1.5px solid #dde1e7;height:100%;display:flex;align-items:center;justify-content:center;min-width:48px;}
+.stepper-val.zero{color:#bdc3c7;}
+.stepper-label{font-size:11px;color:#7f8c8d;margin-top:4px;}
+.stepper.teal .stepper-val{color:#16a085;}
+.stepper.teal .stepper-val.zero{color:#bdc3c7;}
+.stepper.purple .stepper-val{color:#8e44ad;}
+.stepper.purple .stepper-val.zero{color:#bdc3c7;}
+
+/* ── Pip track ── */
+.pip-track{display:flex;gap:3px;margin-top:7px;}
+.pip{flex:1;height:6px;border-radius:3px;background:#ecf0f1;overflow:hidden;position:relative;}
+.pip-fill{position:absolute;left:0;top:0;height:100%;border-radius:3px;transition:width 0.08s;}
+.pip-fill.blue{background:#2980b9;}
+.pip-fill.teal{background:#16a085;}
+.pip-fill.purple{background:#8e44ad;}
+
+/* ── Special: weather card ── */
+.weather-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;}
+.weather-card.has-points{border-color:#16a085;}
+.weather-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.weather-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.weather-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
+.weather-choices{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.weather-choice{flex:1;min-width:120px;padding:9px 12px;border:2px solid #dde1e7;border-radius:6px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:#5a6c7d;transition:all 0.15s;background:white;}
+.weather-choice:hover{border-color:#16a085;color:#16a085;}
+.weather-choice.selected{border-color:#16a085;background:#16a085;color:white;}
+.weather-stepper-wrap{display:none;}
 
 /* ── Special: urbanization card ── */
 .urban-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;grid-column:1/-1;}
@@ -73,10 +104,7 @@ input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
 .pol-slider-row{display:flex;flex-direction:column;gap:4px;}
 .pol-slider-label{display:flex;justify-content:space-between;align-items:center;}
 .pol-slider-name{font-size:13px;font-weight:600;color:#2c3e50;}
-.pol-slider-pts{font-size:16px;font-weight:700;color:#8e44ad;}
-.pol-slider-sub{font-size:11px;color:#7f8c8d;margin-bottom:4px;}
-input[type=range].purple::-webkit-slider-thumb{background:#8e44ad;}
-input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
+.pol-slider-sub{font-size:11px;color:#7f8c8d;margin-bottom:8px;}
 
 /* ── Footer ── */
 .footer-bar{background:white;border-top:1px solid #ddd;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -109,7 +137,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 .tt-score{font-size:16px;font-weight:700;margin-bottom:4px;}
 .tt-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;opacity:0.85;}
 
-#screen1 .body{flex:1;overflow-y:auto;padding:20px 28px 10px;}
+#screen1 .body{flex:1;overflow-y:auto;padding:0 28px 10px;}
 
 /* ── Screen 3: Edit/paint ─────────────────────────────────────────────── */
 #screen3 { position: relative; }
@@ -178,7 +206,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
   </div>
   <div class="body">
 
-    <div class="budget-bar-wrap">
+    <div class="budget-bar-wrap" style="position:sticky;top:0;z-index:100;border-radius:0;margin-bottom:0;border-bottom:1px solid #e8eaed;">
       <div class="budget-header">
         <span class="budget-label">Points Remaining</span>
         <span class="budget-remaining" id="budgetDisplay">100</span>
@@ -188,12 +216,16 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     </div>
 
     <!-- Climate hazards -->
-    <div class="section-label">Climate Hazards</div>
+    <div class="section-label" style="margin-top:20px;">Climate Hazards</div>
     <div class="factors-grid" id="hazardGrid"></div>
 
     <!-- Cost of living -->
     <div class="section-label">Cost of Living</div>
     <div class="factors-grid" id="costGrid"></div>
+
+    <!-- Weather -->
+    <div class="section-label">Weather Preference</div>
+    <div class="factors-grid" id="weatherGrid"></div>
 
     <!-- Urbanization -->
     <div class="section-label">Place Type Preference</div>
@@ -431,6 +463,7 @@ document.getElementById('backToMapBtn').addEventListener('click', function() {
   document.getElementById('mapEdit').classList.remove('paint-mode');
   document.getElementById('screen3').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
+  requestAnimationFrame(function() { if (map) map.invalidateSize({animate:false}); });
 });
 
 document.getElementById('startEditingBtn').addEventListener('click', function() {
@@ -491,7 +524,17 @@ var COST = [
   { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher raw value = more expensive.', direction: -1 }
 ];
 
-// Urbanization: one slider, radio selects which variable gets the weight
+// Weather: two cards, each with direction choice + stepper
+var WEATHER = [
+  { id: 'extreme_heat', label: 'Summer Heat', desc: 'Maximum temperature. Choose whether more heat is desirable, then allocate points.',
+    choiceA: { label: 'More heat is better', direction: 1 }, choiceB: { label: 'Less heat is better', direction: -1 } },
+  { id: 'extreme_cold', label: 'Winter Cold', desc: 'Minimum temperature. Choose whether cold winters are desirable, then allocate points.',
+    choiceA: { label: 'I prefer cold winters', direction: 1 }, choiceB: { label: 'I prefer mild winters', direction: -1 } }
+];
+var weatherDirections = { extreme_heat: null, extreme_cold: null };
+var weatherWeights   = { extreme_heat: 0,    extreme_cold: 0    };
+
+// Urbanization: one stepper, radio selects which variable gets the weight
 var URBAN_OPTIONS = [
   { id: 'urban',    label: 'Urban',    desc: 'Prefer cities and dense metro areas.' },
   { id: 'suburban', label: 'Suburban', desc: 'Prefer suburban communities.' },
@@ -511,34 +554,135 @@ var politicsWeights = { election_diff: 0, state_election_diff: 0 };
 var weights = {};
 HAZARDS.concat(COST).forEach(function(f){ weights[f.id] = 0; });
 
-// ── Build hazard cards ────────────────────────────────────────────────────
-function buildSliderCard(container, factorList) {
+// ── Stepper helpers ───────────────────────────────────────────────────────
+function makeStepper(id, colorClass, onchange) {
+  var pipColor = colorClass || 'blue';
+  var wrap = document.createElement('div');
+  wrap.innerHTML =
+    '<div class="stepper' + (colorClass ? ' '+colorClass : '') + '" id="stepper-'+id+'">' +
+      '<button class="stepper-btn" id="stepdown-'+id+'" disabled>&#8722;</button>' +
+      '<div class="stepper-val zero" id="stepval-'+id+'">0</div>' +
+      '<button class="stepper-btn" id="stepup-'+id+'">&#43;</button>' +
+    '</div>' +
+    '<div class="pip-track" id="pips-'+id+'">' +
+      Array(10).fill('<div class="pip"><div class="pip-fill '+pipColor+'" style="width:0%"></div></div>').join('') +
+    '</div>';
+
+  function getCurrentFromState() {
+    if (weights[id] !== undefined) return weights[id];
+    if (typeof weatherWeights !== 'undefined' && weatherWeights[id] !== undefined) return weatherWeights[id];
+    if (id === 'urban-group') return urbanWeight;
+    if (typeof politicsWeights !== 'undefined' && politicsWeights[id] !== undefined) return politicsWeights[id];
+    return 0;
+  }
+
+  function tryStep(delta) {
+    var cur = getCurrentFromState();
+    if (delta > 0) {
+      // Hard cap: total across all steppers must not exceed BUDGET
+      var total = getTotalAllocatedAll();
+      if (total >= BUDGET) return false;        // budget fully used — hard stop
+      onchange(Math.min(cur + 1, BUDGET));      // also never exceed BUDGET on one stepper
+    } else {
+      if (cur <= 0) return false;
+      onchange(Math.max(0, cur - 1));
+    }
+    return true;
+  }
+
+  function attachHold(btn, delta) {
+    var holdTimer = null, repeatTimer = null;
+    function stop() { clearTimeout(holdTimer); clearInterval(repeatTimer); holdTimer = null; repeatTimer = null; }
+    function start() {
+      if (!tryStep(delta)) return;
+      holdTimer = setTimeout(function() {
+        repeatTimer = setInterval(function() { if (!tryStep(delta)) stop(); }, 80);
+      }, 400);
+    }
+    btn.addEventListener('mousedown',  function(e){ e.preventDefault(); start(); });
+    btn.addEventListener('touchstart', function(e){ e.preventDefault(); start(); }, { passive: false });
+    document.addEventListener('mouseup',    stop);
+    document.addEventListener('touchend',   stop);
+    document.addEventListener('mouseleave', stop);
+  }
+
+  attachHold(wrap.querySelector('#stepup-'+id),   +1);
+  attachHold(wrap.querySelector('#stepdown-'+id), -1);
+  return wrap;
+}
+function updateStepper(id) {
+  var valEl = document.getElementById('stepval-'+id);
+  var downBtn = document.getElementById('stepdown-'+id);
+  var upBtn = document.getElementById('stepup-'+id);
+  if (!valEl) return;
+  // Read current value from state
+  var value = 0;
+  if (weights[id] !== undefined) value = weights[id];
+  else if (weatherWeights[id] !== undefined) value = weatherWeights[id];
+  else if (id === 'urban-group') value = urbanWeight;
+  else if (politicsWeights[id] !== undefined) value = politicsWeights[id];
+  valEl.textContent = value;
+  valEl.className = 'stepper-val' + (value === 0 ? ' zero' : '');
+  downBtn.disabled = (value === 0);
+  var avail = BUDGET - getTotalAllocated('__stepper_'+id+'__');
+  upBtn.disabled = (avail <= 0);
+  // Pip track: 10 segments x 10pts each, partial fill for fractional tens
+  var track = document.getElementById('pips-'+id);
+  if (track) {
+    track.querySelectorAll('.pip-fill').forEach(function(pip, i) {
+      pip.style.width = (Math.max(0, Math.min(10, value - i*10)) * 10) + '%';
+    });
+  }
+}
+
+// ── Build standard factor cards ───────────────────────────────────────────
+function buildStepperCard(container, factorList) {
   factorList.forEach(function(f) {
     var card = document.createElement('div');
     card.className = 'factor-card';
     card.id = 'card-' + f.id;
-    card.innerHTML =
-      '<div class="factor-top">' +
-        '<div class="factor-name">' + f.label + '</div>' +
-        '<div class="factor-points" id="pts-' + f.id + '">0</div>' +
-      '</div>' +
-      '<div class="factor-desc">' + f.desc + '</div>' +
-      '<input type="range" min="0" max="100" value="0" id="slider-' + f.id + '" />';
+    var header = document.createElement('div');
+    header.innerHTML = '<div class="factor-top"><div class="factor-name">'+f.label+'</div></div><div class="factor-desc">'+f.desc+'</div>';
+    card.appendChild(header);
+    card.appendChild(makeStepper(f.id, '', function(nv){ weights[f.id]=nv; updateAllUI(); }));
     container.appendChild(card);
-
-    document.getElementById('slider-' + f.id).addEventListener('input', function() {
-      var newVal = parseInt(this.value);
-      var otherSum = getTotalAllocated(f.id);
-      var maxAllowed = BUDGET - otherSum;
-      if (newVal > maxAllowed) { newVal = maxAllowed; this.value = newVal; }
-      weights[f.id] = newVal;
-      updateAllUI();
-    });
   });
 }
 
-buildSliderCard(document.getElementById('hazardGrid'), HAZARDS);
-buildSliderCard(document.getElementById('costGrid'), COST);
+buildStepperCard(document.getElementById('hazardGrid'), HAZARDS);
+buildStepperCard(document.getElementById('costGrid'), COST);
+
+// ── Weather cards ─────────────────────────────────────────────────────────
+(function() {
+  var grid = document.getElementById('weatherGrid');
+  WEATHER.forEach(function(w) {
+    var card = document.createElement('div');
+    card.className = 'weather-card';
+    card.id = 'card-' + w.id;
+    var header = document.createElement('div');
+    header.innerHTML =
+      '<div class="weather-top"><div class="weather-name">'+w.label+'</div></div>' +
+      '<div class="weather-desc">'+w.desc+'</div>' +
+      '<div class="weather-choices">' +
+        '<div class="weather-choice" id="wchoice-'+w.id+'-a" data-dir="'+w.choiceA.direction+'">'+w.choiceA.label+'</div>' +
+        '<div class="weather-choice" id="wchoice-'+w.id+'-b" data-dir="'+w.choiceB.direction+'">'+w.choiceB.label+'</div>' +
+      '</div>';
+    card.appendChild(header);
+    var sw = document.createElement('div');
+    sw.className = 'weather-stepper-wrap'; sw.id = 'wstepper-wrap-'+w.id;
+    sw.appendChild(makeStepper(w.id, 'teal', (function(wid){ return function(nv){ weatherWeights[wid]=nv; updateAllUI(); }; })(w.id)));
+    card.appendChild(sw);
+    grid.appendChild(card);
+    ['a','b'].forEach(function(k) {
+      document.getElementById('wchoice-'+w.id+'-'+k).addEventListener('click', function() {
+        weatherDirections[w.id] = parseInt(this.dataset.dir);
+        ['a','b'].forEach(function(j){ document.getElementById('wchoice-'+w.id+'-'+j).classList.toggle('selected', j===k); });
+        document.getElementById('wstepper-wrap-'+w.id).style.display = 'block';
+        updateAllUI();
+      });
+    });
+  });
+})();
 
 // ── Urbanization card ─────────────────────────────────────────────────────
 (function() {
@@ -560,30 +704,22 @@ buildSliderCard(document.getElementById('costGrid'), COST);
         '</div>';
       }).join('') +
     '</div>' +
-    '<div id="urban-slider-wrap" style="display:none">' +
-      '<input type="range" min="0" max="100" value="0" id="slider-urban-group" />' +
-    '</div>';
+    '<div id="urban-stepper-wrap" style="display:none"></div>';
+  var usw = document.createElement('div'); usw.id = 'urban-stepper-inner';
+  // We'll append the stepper after the card is in DOM
   grid.appendChild(card);
+  var ustepWrap = document.getElementById('urban-stepper-wrap');
+  ustepWrap.appendChild(makeStepper('urban-group', '', function(nv){ urbanWeight=nv; updateAllUI(); }));
 
-  // Choice buttons
   URBAN_OPTIONS.forEach(function(o) {
     document.getElementById('uchoice-' + o.id).addEventListener('click', function() {
       urbanChoice = o.id;
       URBAN_OPTIONS.forEach(function(x) {
         document.getElementById('uchoice-' + x.id).classList.toggle('selected', x.id === o.id);
       });
-      document.getElementById('urban-slider-wrap').style.display = 'block';
+      document.getElementById('urban-stepper-wrap').style.display = 'block';
       updateAllUI();
     });
-  });
-
-  document.getElementById('slider-urban-group').addEventListener('input', function() {
-    var newVal = parseInt(this.value);
-    var otherSum = getTotalAllocated('__urban__');
-    var maxAllowed = BUDGET - otherSum;
-    if (newVal > maxAllowed) { newVal = maxAllowed; this.value = newVal; }
-    urbanWeight = newVal;
-    updateAllUI();
   });
 })();
 
@@ -603,24 +739,23 @@ buildSliderCard(document.getElementById('costGrid'), COST);
       '<div class="politics-choice" id="pchoice-conservative" data-id="conservative">More Conservative</div>' +
     '</div>' +
     '<div class="politics-sliders" id="politics-sliders-wrap">' +
-      '<div class="pol-slider-row">' +
-        '<div class="pol-slider-label">' +
-          '<span class="pol-slider-name">County-level elections</span>' +
-          '<span class="pol-slider-pts" id="pts-election_diff">0</span>' +
-        '</div>' +
+      '<div class="pol-slider-row" id="polrow-election_diff">' +
+        '<div class="pol-slider-label"><span class="pol-slider-name">County-level elections</span></div>' +
         '<div class="pol-slider-sub">How much do you prioritize the political lean of the specific county?</div>' +
-        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-election_diff" />' +
       '</div>' +
-      '<div class="pol-slider-row">' +
-        '<div class="pol-slider-label">' +
-          '<span class="pol-slider-name">State-level elections</span>' +
-          '<span class="pol-slider-pts" id="pts-state_election_diff">0</span>' +
-        '</div>' +
+      '<div class="pol-slider-row" id="polrow-state_election_diff">' +
+        '<div class="pol-slider-label"><span class="pol-slider-name">State-level elections</span></div>' +
         '<div class="pol-slider-sub">How much do you prioritize the political lean of the state overall?</div>' +
-        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-state_election_diff" />' +
       '</div>' +
     '</div>';
   grid.appendChild(card);
+
+  // Append steppers into each row after card is in DOM
+  ['election_diff','state_election_diff'].forEach(function(id) {
+    document.getElementById('polrow-'+id).appendChild(
+      makeStepper(id, 'purple', (function(pid){ return function(nv){ politicsWeights[pid]=nv; updateAllUI(); }; })(id))
+    );
+  });
 
   ['liberal','conservative'].forEach(function(id) {
     document.getElementById('pchoice-' + id).addEventListener('click', function() {
@@ -632,51 +767,32 @@ buildSliderCard(document.getElementById('costGrid'), COST);
       updateAllUI();
     });
   });
-
-  ['election_diff','state_election_diff'].forEach(function(id) {
-    document.getElementById('slider-' + id).addEventListener('input', function() {
-      var newVal = parseInt(this.value);
-      var otherSum = getTotalAllocated('__pol_' + id + '__');
-      var maxAllowed = BUDGET - otherSum;
-      if (newVal > maxAllowed) { newVal = maxAllowed; this.value = newVal; }
-      politicsWeights[id] = newVal;
-      updateAllUI();
-    });
-  });
 })();
 
 // ── Budget helpers ────────────────────────────────────────────────────────
-// Returns total allocated EXCLUDING the given id (pass special token for group items)
 function getTotalAllocated(excludeId) {
   var total = 0;
   HAZARDS.concat(COST).forEach(function(f) {
-    if (f.id !== excludeId) total += weights[f.id];
+    if ('__stepper_'+f.id+'__' !== excludeId) total += weights[f.id];
   });
-  if (excludeId !== '__urban__') total += urbanWeight;
-  if (excludeId !== '__pol_election_diff__') total += politicsWeights.election_diff;
-  if (excludeId !== '__pol_state_election_diff__') total += politicsWeights.state_election_diff;
+  WEATHER.forEach(function(w) {
+    if ('__stepper_'+w.id+'__' !== excludeId) total += weatherWeights[w.id];
+  });
+  if (excludeId !== '__stepper_urban-group__') total += urbanWeight;
+  if (excludeId !== '__stepper_election_diff__') total += politicsWeights.election_diff;
+  if (excludeId !== '__stepper_state_election_diff__') total += politicsWeights.state_election_diff;
   return total;
 }
 
 function getTotalAllocatedAll() {
   var total = 0;
   HAZARDS.concat(COST).forEach(function(f){ total += weights[f.id]; });
-  total += urbanWeight;
-  total += politicsWeights.election_diff + politicsWeights.state_election_diff;
+  WEATHER.forEach(function(w){ total += weatherWeights[w.id]; });
+  total += urbanWeight + politicsWeights.election_diff + politicsWeights.state_election_diff;
   return total;
 }
 
 // ── Update all UI ─────────────────────────────────────────────────────────
-function updateSliderFill(slider, value) {
-  var pct = value;
-  slider.style.background = 'linear-gradient(to right, #2980b9 0%, #2980b9 ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
-}
-
-function updateSliderFillPurple(slider, value) {
-  var pct = value;
-  slider.style.background = 'linear-gradient(to right, #8e44ad 0%, #8e44ad ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
-}
-
 function updateAllUI() {
   var allocated = getTotalAllocatedAll();
   var remaining = BUDGET - allocated;
@@ -684,48 +800,43 @@ function updateAllUI() {
   // Budget bar
   var bd = document.getElementById('budgetDisplay');
   var bf = document.getElementById('budgetFill');
+  var isOver = remaining < 0;
   bd.textContent = remaining;
-  bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : '');
-  bf.style.width = remaining + '%';
-  bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : '');
-  document.getElementById('budgetSubtext').textContent = remaining === 0
-    ? 'All points allocated. You can proceed.'
-    : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 100 to continue.';
+  bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : isOver ? ' over' : '');
+  bf.style.width = Math.max(0, remaining) + '%';
+  bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : isOver ? ' over' : '');
+  var barWrap = document.querySelector('.budget-bar-wrap');
+  if (barWrap) barWrap.classList.toggle('over', isOver);
+  var subtext = document.getElementById('budgetSubtext');
+  subtext.className = 'budget-subtext' + (isOver ? ' over' : '');
+  subtext.textContent = isOver
+    ? '⚠ Over budget by ' + Math.abs(remaining) + ' point' + (Math.abs(remaining) !== 1 ? 's' : '') + ' — reduce some categories to continue.'
+    : remaining === 0
+      ? 'All points allocated. You can proceed.'
+      : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 100 to continue.';
   document.getElementById('footerHint').textContent = allocated + ' of 100 points allocated';
 
   // Proceed: all 100 spent AND urbanization choice made AND politics alignment chosen (if any points assigned)
-  var urbanOk = urbanWeight === 0 || urbanChoice !== null;
-  var politicsOk = (politicsWeights.election_diff === 0 && politicsWeights.state_election_diff === 0) || politicsAlignment !== null;
-  document.getElementById('proceedBtn').disabled = (remaining !== 0 || !urbanOk || !politicsOk);
-
-  // Standard factor cards
+  // Stepper states
   HAZARDS.concat(COST).forEach(function(f) {
-    var v = weights[f.id];
-    document.getElementById('pts-' + f.id).textContent = v;
-    var slider = document.getElementById('slider-' + f.id);
-    slider.max = 100;
-    slider.value = v;
-    updateSliderFill(slider, v);
-    document.getElementById('card-' + f.id).className = 'factor-card' + (v > 0 ? ' has-points' : '');
+    updateStepper(f.id);
+    document.getElementById('card-'+f.id).className = 'factor-card'+(weights[f.id]>0?' has-points':'');
   });
-
-  // Urban group
-  var uSlider = document.getElementById('slider-urban-group');
-  uSlider.max = 100; uSlider.value = urbanWeight;
-  updateSliderFill(uSlider, urbanWeight);
-  document.getElementById('pts-urban-group').textContent = urbanWeight;
-  document.getElementById('card-urban-group').className = 'urban-card' + (urbanWeight > 0 ? ' has-points' : '');
-
-  // Politics sliders
-  ['election_diff','state_election_diff'].forEach(function(id) {
-    var v = politicsWeights[id];
-    var slider = document.getElementById('slider-' + id);
-    slider.max = 100; slider.value = v;
-    updateSliderFillPurple(slider, v);
-    document.getElementById('pts-' + id).textContent = v;
+  WEATHER.forEach(function(w) {
+    updateStepper(w.id);
+    document.getElementById('card-'+w.id).className = 'weather-card'+(weatherWeights[w.id]>0?' has-points':'');
   });
+  updateStepper('urban-group');
+  document.getElementById('card-urban-group').className = 'urban-card'+(urbanWeight>0?' has-points':'');
+  ['election_diff','state_election_diff'].forEach(function(id){ updateStepper(id); });
   var polTotal = politicsWeights.election_diff + politicsWeights.state_election_diff;
-  document.getElementById('card-politics-group').className = 'politics-card' + (polTotal > 0 ? ' has-points' : '');
+  document.getElementById('card-politics-group').className = 'politics-card'+(polTotal>0?' has-points':'');
+
+  // Proceed button
+  var urbanOk = urbanWeight === 0 || urbanChoice !== null;
+  var politicsOk = (politicsWeights.election_diff===0 && politicsWeights.state_election_diff===0) || politicsAlignment!==null;
+  var weatherOk = WEATHER.every(function(w){ return weatherWeights[w.id]===0 || weatherDirections[w.id]!==null; });
+  document.getElementById('proceedBtn').disabled = (remaining!==0 || !urbanOk || !politicsOk || !weatherOk);
 }
 
 updateAllUI();
@@ -776,6 +887,15 @@ function computeComposite(props) {
     total += w * oriented; wsum += w;
   });
 
+  // Weather: direction chosen by respondent
+  WEATHER.forEach(function(wf) {
+    var w = weatherWeights[wf.id] / 100.0;
+    if (w === 0) return;
+    var raw = props[wf.id] !== undefined ? props[wf.id] : 0.5;
+    var oriented = weatherDirections[wf.id] === 1 ? raw : (1 - raw);
+    total += w * oriented; wsum += w;
+  });
+
   // Urbanization: only the chosen variable
   if (urbanWeight > 0 && urbanChoice) {
     var w = urbanWeight / 100.0;
@@ -819,6 +939,9 @@ function renderMap() {
         HAZARDS.concat(COST).forEach(function(f) {
           if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
         });
+        WEATHER.forEach(function(wf) {
+          if (weatherWeights[wf.id] > 0) contribs.push({ label: wf.label, w: weatherWeights[wf.id], val: props[wf.id] });
+        });
         if (urbanWeight > 0 && urbanChoice) {
           contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
         }
@@ -831,9 +954,15 @@ function renderMap() {
         var rows = contribs.slice(0,3).map(function(c){
           return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
         }).join('');
-        layer.bindTooltip('<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows,
-          { className: 'cell-tooltip', sticky: true }).openTooltip(e.latlng);
+        if (!layer._tooltip) {
+          layer.bindTooltip('', { className: 'cell-tooltip', sticky: false, permanent: false });
+        }
+        layer.setTooltipContent('<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows);
+        layer.openTooltip(e.latlng);
         layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
+      });
+      layer.on('mousemove', function(e) {
+        if (layer.isTooltipOpen()) layer.getTooltip().setLatLng(e.latlng);
       });
       layer.on('mouseout', function() {
         layer.closeTooltip();
@@ -847,6 +976,9 @@ function renderMap() {
   // Weights summary panel
   var rows = [];
   HAZARDS.concat(COST).forEach(function(f){ if (weights[f.id]>0) rows.push({label:f.label, w:weights[f.id]}); });
+  WEATHER.forEach(function(wf){
+    if (weatherWeights[wf.id]>0) rows.push({label:wf.label+(weatherDirections[wf.id]===1?' ↑':' ↓'), w:weatherWeights[wf.id]});
+  });
   if (urbanWeight > 0 && urbanChoice) rows.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight });
   if (politicsWeights.election_diff > 0) rows.push({ label: 'County elections', w: politicsWeights.election_diff });
   if (politicsWeights.state_election_diff > 0) rows.push({ label: 'State elections', w: politicsWeights.state_election_diff });
@@ -866,11 +998,17 @@ function renderMap() {
 document.getElementById('proceedBtn').addEventListener('click', function() {
   document.getElementById('screen1').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
-  // Defer so browser paints screen2 (giving #map its full height) before Leaflet initializes
-  setTimeout(function() {
-    renderMap();
-    setTimeout(function() { if (map) map.invalidateSize({animate:false}); }, 200);
-  }, 50);
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      renderMap();
+      setTimeout(function() { if (map) map.invalidateSize({animate:false}); }, 150);
+      setTimeout(function() { if (map) map.invalidateSize({animate:false}); }, 600);
+    });
+  });
+  if (window.ResizeObserver && !window._mapResizeObserver) {
+    window._mapResizeObserver = new ResizeObserver(function() { if (map) map.invalidateSize({animate:false}); });
+    window._mapResizeObserver.observe(document.getElementById('map'));
+  }
 });
 document.getElementById('backBtn').addEventListener('click', function() {
   document.getElementById('screen2').classList.remove('active');
@@ -1060,6 +1198,7 @@ document.getElementById('backToMapBtn').addEventListener('click', function() {
   document.getElementById('mapEdit').classList.remove('paint-mode');
   document.getElementById('screen3').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
+  requestAnimationFrame(function() { if (map) map.invalidateSize({animate:false}); });
 });
 
 document.getElementById('startEditingBtn').addEventListener('click', function() {
