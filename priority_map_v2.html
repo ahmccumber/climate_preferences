@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Climate Migration Priorities</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
@@ -196,98 +196,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 }
 #mapEdit.paint-mode { cursor: crosshair; }
 .state-label{font-size:10px;font-weight:700;color:rgba(30,30,30,0.72);text-shadow:0 0 4px #fff,0 0 8px #fff;pointer-events:none;white-space:nowrap;line-height:1;}
-
-/* ══════════════════════════════════════════════
-   MOBILE / TOUCH OVERRIDES
-   ══════════════════════════════════════════════ */
-
-/* Fix iOS 100vh including browser chrome */
-.screen { height: 100dvh; }          /* dynamic viewport height — modern browsers */
-@supports not (height: 100dvh) {
-  .screen { height: -webkit-fill-available; }
-}
-html, body { height: -webkit-fill-available; }
-
-/* Smooth momentum scrolling on iOS */
-#screen1 .body { -webkit-overflow-scrolling: touch; }
-
-/* ── Compact header on small screens ── */
-@media (max-width: 600px) {
-  .header { padding: 12px 16px; }
-  .header h1 { font-size: 17px; }
-  .header p { font-size: 12px; }
-
-  /* Narrower body padding */
-  #screen1 .body { padding: 0 12px 24px; }
-  .budget-bar-wrap { padding: 12px 16px; }
-
-  /* Single-column cards always on mobile */
-  .factors-grid { grid-template-columns: 1fr; gap: 10px; }
-
-  /* Section labels */
-  .section-label { margin: 20px 0 8px; }
-
-  /* Bigger stepper buttons — Apple 44pt minimum touch target */
-  .stepper { height: 48px; }
-  .stepper-btn { width: 52px; height: 48px; font-size: 22px; }
-  .stepper-val { font-size: 20px; min-width: 56px; }
-
-  /* Choice buttons: always stack vertically on narrow phones */
-  .weather-choices, .urban-choices, .politics-choices {
-    flex-direction: column; gap: 8px;
-  }
-  .weather-choice, .urban-choice, .politics-choice {
-    min-width: unset; width: 100%;
-    padding: 12px 14px; font-size: 14px;
-  }
-
-  /* Footer */
-  .footer-bar { padding: 12px 16px; }
-  .footer-hint { font-size: 12px; }
-  .btn { padding: 12px 20px; font-size: 14px; }
-
-  /* Screen 2 header: stack title + buttons */
-  #screen2 .header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  #screen2 .header > div:last-child { width: 100%; justify-content: flex-end; }
-  #screen2 .header h1 { font-size: 16px; }
-
-  /* Weights summary: smaller, bottom-left instead of top-right so it doesn't cover map */
-  .weights-summary {
-    top: auto; right: auto;
-    bottom: 48px; left: 8px;
-    max-width: 160px;
-    font-size: 11px;
-    padding: 10px 12px;
-  }
-  .weight-name { max-width: 100px; }
-  .weights-title { font-size: 10px; }
-
-  /* Legend: smaller on mobile */
-  .legend { padding: 10px 12px; min-width: 130px; }
-  .legend-title { font-size: 11px; }
-
-  /* Screen 3 header */
-  #screen3 .header { flex-direction: column; align-items: flex-start; gap: 6px; }
-  #screen3 .header h1 { font-size: 16px; }
-  #screen3 .header > div:last-child { width: 100%; justify-content: flex-end; }
-
-  /* Paint toolbar: wrap tightly */
-  .paint-toolbar { padding: 6px 12px; gap: 8px; }
-  .tool-btn { padding: 8px 12px; font-size: 13px; }
-  #brushSizeSlider { width: 80px; }
-
-  /* Instructions box */
-  .instructions-box { padding: 22px 20px; }
-  .instructions-box h2 { font-size: 17px; }
-}
-
-/* Tap highlight suppression on interactive elements */
-.stepper-btn, .weather-choice, .urban-choice, .politics-choice,
-.btn, .tool-btn {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;   /* prevents 300ms tap delay */
-}
-
 </style>
 </head>
 <body>
@@ -452,20 +360,21 @@ function cellsInBrush(latlng) {
   return hits;
 }
 
+var paintDelta = 0.02; // set to 0.005 on touch devices
 function nudgeTick() {
   if (!isPainting || !lastPaintLatLng) return;
   var layers = cellsInBrush(lastPaintLatLng);
   var changed = [];
   layers.forEach(function(l) {
     var cur = l._paintScore;
-    var next = paintMode === 'raise' ? Math.min(1, cur + 0.02) : Math.max(0, cur - 0.02);
+    var next = paintMode === 'raise' ? Math.min(1, cur + paintDelta) : Math.max(0, cur - paintDelta);
     if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
   });
   if (changed.length) recolorLayers(changed);
 }
 
 function stopPainting() {
-  if (isPainting) { isPainting = false; clearInterval(paintInterval); paintInterval = null; paintedThisStroke = {}; }
+  if (isPainting) { isPainting = false; clearTimeout(paintInterval); clearInterval(paintInterval); paintInterval = null; paintedThisStroke = {}; }
 }
 
 function renderEditMap() {
@@ -507,7 +416,7 @@ function renderEditMap() {
           var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
           undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
           document.getElementById('paintUndoBtn').disabled = false;
-          nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+          paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
         }
       });
       layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
@@ -528,15 +437,16 @@ function renderEditMap() {
     var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
     undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
     document.getElementById('paintUndoBtn').disabled = false;
-    nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+    paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
   });
   mapEdit.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
   mapEdit.on('mouseup', stopPainting);
   document.addEventListener('mouseup', stopPainting);
 
-  // ── Touch events for paint tool ──
+  // Touch paint — slower interval, no initial tick, so brief taps don't over-paint
   (function() {
     var el = document.getElementById('mapEdit');
+    var touchMoved = false;
     function ptToLatLng(touch) {
       var r = el.getBoundingClientRect();
       return mapEdit.containerPointToLatLng(L.point(touch.clientX - r.left, touch.clientY - r.top));
@@ -544,18 +454,27 @@ function renderEditMap() {
     el.addEventListener('touchstart', function(e) {
       if (!paintActive) return;
       e.preventDefault();
+      paintDelta = 0.005; // gentle delta for touch (4x smaller than mouse)
+      touchMoved = false;
       isPainting = true; paintedThisStroke = {}; lastPaintLatLng = ptToLatLng(e.touches[0]);
       var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
       undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
       document.getElementById('paintUndoBtn').disabled = false;
-      nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+      // Only paint while actively dragging — brief taps do nothing
+      paintInterval = setInterval(function() {
+        if (touchMoved) nudgeTick();
+      }, 120);
     }, { passive: false });
     el.addEventListener('touchmove', function(e) {
       if (!paintActive || !isPainting) return;
       e.preventDefault();
+      touchMoved = true;
       lastPaintLatLng = ptToLatLng(e.touches[0]);
     }, { passive: false });
-    el.addEventListener('touchend', function() { stopPainting(); }, { passive: true });
+    el.addEventListener('touchend', function() {
+      touchMoved = false;
+      stopPainting();
+    }, { passive: true });
   })();
 
   // Weights summary
@@ -1146,23 +1065,8 @@ function renderMap() {
   // Single shared tooltip on the map — avoids per-layer tooltip pile-up on drag
   var sharedTip = L.tooltip({ className: 'cell-tooltip', sticky: false, permanent: false, offset: [12, 0] });
   var mapDragging = false;
-  var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  var tappedLayer = null; // track currently-tapped layer on touch devices
-
   map.on('dragstart', function() { mapDragging = true; sharedTip.remove(); });
   map.on('dragend',   function() { mapDragging = false; });
-  // Dismiss tooltip when tapping empty map area on touch
-  map.on('click', function() {
-    if (isTouchDevice && tappedLayer) {
-      sharedTip.remove();
-      var raw = computeComposite(tappedLayer.feature.properties);
-      var minS2 = Math.min.apply(null, geojsonData.features.map(function(f){ return computeComposite(f.properties); }));
-      var maxS2 = Math.max.apply(null, geojsonData.features.map(function(f){ return computeComposite(f.properties); }));
-      var t = maxS2 > minS2 ? (raw - minS2) / (maxS2 - minS2) : 0.5;
-      tappedLayer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-      tappedLayer = null;
-    }
-  });
 
   function buildTipContent(props, comp) {
     var contribs = [];
@@ -1194,9 +1098,8 @@ function renderMap() {
       return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
     },
     onEachFeature: function(feature, layer) {
-      // Desktop: hover behaviour
       layer.on('mouseover', function(e) {
-        if (isTouchDevice || mapDragging) return;
+        if (mapDragging) return;
         var comp = computeComposite(feature.properties);
         sharedTip.setContent(buildTipContent(feature.properties, comp));
         sharedTip.setLatLng(e.latlng);
@@ -1204,41 +1107,14 @@ function renderMap() {
         layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
       });
       layer.on('mousemove', function(e) {
-        if (isTouchDevice || mapDragging) return;
+        if (mapDragging) return;
         sharedTip.setLatLng(e.latlng);
       });
       layer.on('mouseout', function() {
-        if (isTouchDevice) return;
         sharedTip.remove();
         var raw = computeComposite(feature.properties);
         var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
         layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-      });
-      // Touch: tap to show/dismiss tooltip
-      layer.on('click', function(e) {
-        if (!isTouchDevice) return;
-        L.DomEvent.stopPropagation(e); // prevent map click from firing
-        // Restore previously tapped layer
-        if (tappedLayer && tappedLayer !== layer) {
-          var raw2 = computeComposite(tappedLayer.feature.properties);
-          var t2 = maxS > minS ? (raw2 - minS) / (maxS - minS) : 0.5;
-          tappedLayer.setStyle({ fillColor: interpolateColor(t2), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-        }
-        if (tappedLayer === layer) {
-          // Second tap on same cell: dismiss
-          sharedTip.remove();
-          var rawR = computeComposite(feature.properties);
-          var tR = maxS > minS ? (rawR - minS) / (maxS - minS) : 0.5;
-          layer.setStyle({ fillColor: interpolateColor(tR), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-          tappedLayer = null;
-        } else {
-          var comp = computeComposite(feature.properties);
-          sharedTip.setContent(buildTipContent(feature.properties, comp));
-          sharedTip.setLatLng(e.latlng);
-          sharedTip.addTo(map);
-          layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
-          tappedLayer = layer;
-        }
       });
     }
   }).addTo(map);
@@ -1361,20 +1237,21 @@ function cellsInBrush(latlng) {
   return hits;
 }
 
+var paintDelta = 0.02; // set to 0.005 on touch devices
 function nudgeTick() {
   if (!isPainting || !lastPaintLatLng) return;
   var layers = cellsInBrush(lastPaintLatLng);
   var changed = [];
   layers.forEach(function(l) {
     var cur = l._paintScore;
-    var next = paintMode === 'raise' ? Math.min(1, cur + 0.02) : Math.max(0, cur - 0.02);
+    var next = paintMode === 'raise' ? Math.min(1, cur + paintDelta) : Math.max(0, cur - paintDelta);
     if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
   });
   if (changed.length) recolorLayers(changed);
 }
 
 function stopPainting() {
-  if (isPainting) { isPainting = false; clearInterval(paintInterval); paintInterval = null; paintedThisStroke = {}; }
+  if (isPainting) { isPainting = false; clearTimeout(paintInterval); clearInterval(paintInterval); paintInterval = null; paintedThisStroke = {}; }
 }
 
 function renderEditMap() {
@@ -1416,7 +1293,7 @@ function renderEditMap() {
           var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
           undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
           document.getElementById('paintUndoBtn').disabled = false;
-          nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+          paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
         }
       });
       layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
@@ -1437,15 +1314,16 @@ function renderEditMap() {
     var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
     undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
     document.getElementById('paintUndoBtn').disabled = false;
-    nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+    paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
   });
   mapEdit.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
   mapEdit.on('mouseup', stopPainting);
   document.addEventListener('mouseup', stopPainting);
 
-  // ── Touch events for paint tool ──
+  // Touch paint — slower interval, no initial tick, so brief taps don't over-paint
   (function() {
     var el = document.getElementById('mapEdit');
+    var touchMoved = false;
     function ptToLatLng(touch) {
       var r = el.getBoundingClientRect();
       return mapEdit.containerPointToLatLng(L.point(touch.clientX - r.left, touch.clientY - r.top));
@@ -1453,18 +1331,27 @@ function renderEditMap() {
     el.addEventListener('touchstart', function(e) {
       if (!paintActive) return;
       e.preventDefault();
+      paintDelta = 0.005; // gentle delta for touch (4x smaller than mouse)
+      touchMoved = false;
       isPainting = true; paintedThisStroke = {}; lastPaintLatLng = ptToLatLng(e.touches[0]);
       var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
       undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
       document.getElementById('paintUndoBtn').disabled = false;
-      nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+      // Only paint while actively dragging — brief taps do nothing
+      paintInterval = setInterval(function() {
+        if (touchMoved) nudgeTick();
+      }, 120);
     }, { passive: false });
     el.addEventListener('touchmove', function(e) {
       if (!paintActive || !isPainting) return;
       e.preventDefault();
+      touchMoved = true;
       lastPaintLatLng = ptToLatLng(e.touches[0]);
     }, { passive: false });
-    el.addEventListener('touchend', function() { stopPainting(); }, { passive: true });
+    el.addEventListener('touchend', function() {
+      touchMoved = false;
+      stopPainting();
+    }, { passive: true });
   })();
 
   // Weights summary
