@@ -195,6 +195,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   display: inline-block;
 }
 #mapEdit.paint-mode { cursor: crosshair; }
+#mapEdit.pan-mode{cursor:grab;} #mapEdit.pan-mode:active{cursor:grabbing;}
+.paint-controls-disabled{opacity:0.4;pointer-events:none;}
 .state-label{font-size:10px;font-weight:700;color:rgba(30,30,30,0.72);text-shadow:0 0 4px #fff,0 0 8px #fff;pointer-events:none;white-space:nowrap;line-height:1;}
 </style>
 </head>
@@ -298,6 +300,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <!-- Paint toolbar -->
   <div class="paint-toolbar" id="paintToolbar">
     <div class="toolbar-group">
+      <button class="tool-btn" id="panModeBtn" title="Switch to pan/zoom mode">&#128197; Pan</button>
+      <button class="tool-btn active" id="paintModeBtn" title="Switch to paint mode">&#9998; Paint</button>
+    </div>
+    <div class="toolbar-group" id="paintControls">
       <button class="tool-btn active" id="paintRaiseBtn">&#9650; Raise</button>
       <button class="tool-btn" id="paintLowerBtn">&#9660; Lower</button>
     </div>
@@ -337,14 +343,28 @@ function paintCellColor(score) {
   return interpolateColor(t);
 }
 
+var _recolorPending = false, _recolorQueue = null;
 function recolorLayers(layers) {
   var gl = gridLayerEdit;
   if (!gl) return;
-  var fn = function(l) {
-    var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
-    l.setStyle({ fillColor: paintCellColor(s) });
-  };
-  if (layers) { layers.forEach(fn); } else { gl.eachLayer(fn); }
+  // Merge into queue
+  if (layers) {
+    if (!_recolorQueue) _recolorQueue = [];
+    layers.forEach(function(l){ _recolorQueue.push(l); });
+  } else {
+    _recolorQueue = null; // null = all layers
+  }
+  if (_recolorPending) return; // already scheduled
+  _recolorPending = true;
+  requestAnimationFrame(function() {
+    _recolorPending = false;
+    var fn = function(l) {
+      var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
+      l.setStyle({ fillColor: paintCellColor(s) });
+    };
+    if (_recolorQueue) { _recolorQueue.forEach(fn); } else { gl.eachLayer(fn); }
+    _recolorQueue = null;
+  });
 }
 
 function cellsInBrush(latlng) {
@@ -502,6 +522,7 @@ document.getElementById('goToEditBtn').addEventListener('click', function() {
 document.getElementById('backToMapBtn').addEventListener('click', function() {
   stopPainting(); paintActive = false;
   document.getElementById('mapEdit').classList.remove('paint-mode');
+  document.getElementById('mapEdit').classList.remove('pan-mode');
   document.getElementById('screen3').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
   requestAnimationFrame(function() { if (map) map.invalidateSize({animate:false}); });
@@ -510,11 +531,45 @@ document.getElementById('backToMapBtn').addEventListener('click', function() {
 document.getElementById('startEditingBtn').addEventListener('click', function() {
   document.getElementById('editInstructions').style.display = 'none';
   document.getElementById('paintToolbar').classList.add('visible');
-  document.getElementById('mapEdit').classList.add('paint-mode');
-  paintActive = true;
-  mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable(); mapEdit.doubleClickZoom.disable();
+  // Start in paint mode
+  setPaintMode(true);
 });
 
+function setPaintMode(painting) {
+  paintActive = painting;
+  var mapEl = document.getElementById('mapEdit');
+  if (painting) {
+    mapEl.classList.add('paint-mode');
+    mapEl.classList.remove('pan-mode');
+    document.getElementById('paintModeBtn').classList.add('active');
+    document.getElementById('panModeBtn').classList.remove('active');
+    document.getElementById('paintControls').classList.remove('paint-controls-disabled');
+    if (mapEdit) {
+      mapEdit.dragging.disable();
+      mapEdit.scrollWheelZoom.disable();
+      mapEdit.doubleClickZoom.disable();
+      if (mapEdit.tap) mapEdit.tap.disable();
+      if (mapEdit.touchZoom) mapEdit.touchZoom.disable();
+    }
+  } else {
+    stopPainting();
+    mapEl.classList.remove('paint-mode');
+    mapEl.classList.add('pan-mode');
+    document.getElementById('panModeBtn').classList.add('active');
+    document.getElementById('paintModeBtn').classList.remove('active');
+    document.getElementById('paintControls').classList.add('paint-controls-disabled');
+    if (mapEdit) {
+      mapEdit.dragging.enable();
+      mapEdit.scrollWheelZoom.enable();
+      mapEdit.doubleClickZoom.enable();
+      if (mapEdit.tap) mapEdit.tap.enable();
+      if (mapEdit.touchZoom) mapEdit.touchZoom.enable();
+    }
+  }
+}
+
+document.getElementById('panModeBtn').addEventListener('click', function() { setPaintMode(false); });
+document.getElementById('paintModeBtn').addEventListener('click', function() { setPaintMode(true); });
 document.getElementById('paintRaiseBtn').addEventListener('click', function() {
   paintMode = 'raise';
   this.classList.add('active');
@@ -1214,14 +1269,28 @@ function paintCellColor(score) {
   return interpolateColor(t);
 }
 
+var _recolorPending = false, _recolorQueue = null;
 function recolorLayers(layers) {
   var gl = gridLayerEdit;
   if (!gl) return;
-  var fn = function(l) {
-    var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
-    l.setStyle({ fillColor: paintCellColor(s) });
-  };
-  if (layers) { layers.forEach(fn); } else { gl.eachLayer(fn); }
+  // Merge into queue
+  if (layers) {
+    if (!_recolorQueue) _recolorQueue = [];
+    layers.forEach(function(l){ _recolorQueue.push(l); });
+  } else {
+    _recolorQueue = null; // null = all layers
+  }
+  if (_recolorPending) return; // already scheduled
+  _recolorPending = true;
+  requestAnimationFrame(function() {
+    _recolorPending = false;
+    var fn = function(l) {
+      var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
+      l.setStyle({ fillColor: paintCellColor(s) });
+    };
+    if (_recolorQueue) { _recolorQueue.forEach(fn); } else { gl.eachLayer(fn); }
+    _recolorQueue = null;
+  });
 }
 
 function cellsInBrush(latlng) {
@@ -1379,6 +1448,7 @@ document.getElementById('goToEditBtn').addEventListener('click', function() {
 document.getElementById('backToMapBtn').addEventListener('click', function() {
   stopPainting(); paintActive = false;
   document.getElementById('mapEdit').classList.remove('paint-mode');
+  document.getElementById('mapEdit').classList.remove('pan-mode');
   document.getElementById('screen3').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
   requestAnimationFrame(function() { if (map) map.invalidateSize({animate:false}); });
@@ -1387,11 +1457,45 @@ document.getElementById('backToMapBtn').addEventListener('click', function() {
 document.getElementById('startEditingBtn').addEventListener('click', function() {
   document.getElementById('editInstructions').style.display = 'none';
   document.getElementById('paintToolbar').classList.add('visible');
-  document.getElementById('mapEdit').classList.add('paint-mode');
-  paintActive = true;
-  mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable(); mapEdit.doubleClickZoom.disable();
+  // Start in paint mode
+  setPaintMode(true);
 });
 
+function setPaintMode(painting) {
+  paintActive = painting;
+  var mapEl = document.getElementById('mapEdit');
+  if (painting) {
+    mapEl.classList.add('paint-mode');
+    mapEl.classList.remove('pan-mode');
+    document.getElementById('paintModeBtn').classList.add('active');
+    document.getElementById('panModeBtn').classList.remove('active');
+    document.getElementById('paintControls').classList.remove('paint-controls-disabled');
+    if (mapEdit) {
+      mapEdit.dragging.disable();
+      mapEdit.scrollWheelZoom.disable();
+      mapEdit.doubleClickZoom.disable();
+      if (mapEdit.tap) mapEdit.tap.disable();
+      if (mapEdit.touchZoom) mapEdit.touchZoom.disable();
+    }
+  } else {
+    stopPainting();
+    mapEl.classList.remove('paint-mode');
+    mapEl.classList.add('pan-mode');
+    document.getElementById('panModeBtn').classList.add('active');
+    document.getElementById('paintModeBtn').classList.remove('active');
+    document.getElementById('paintControls').classList.add('paint-controls-disabled');
+    if (mapEdit) {
+      mapEdit.dragging.enable();
+      mapEdit.scrollWheelZoom.enable();
+      mapEdit.doubleClickZoom.enable();
+      if (mapEdit.tap) mapEdit.tap.enable();
+      if (mapEdit.touchZoom) mapEdit.touchZoom.enable();
+    }
+  }
+}
+
+document.getElementById('panModeBtn').addEventListener('click', function() { setPaintMode(false); });
+document.getElementById('paintModeBtn').addEventListener('click', function() { setPaintMode(true); });
 document.getElementById('paintRaiseBtn').addEventListener('click', function() {
   paintMode = 'raise';
   this.classList.add('active');
