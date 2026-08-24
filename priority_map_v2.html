@@ -138,6 +138,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 #map,#mapEdit{width:100%;height:100%;}
 #screen3{position:relative;}
 .edit-instructions{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:1000;justify-content:center;align-items:center;}
+.edit-instructions.visible{display:flex;}
 .instructions-box{background:white;border-radius:12px;padding:30px 36px;max-width:460px;}
 .paint-toolbar{display:none;background:#fff;border-bottom:1px solid #ddd;padding:8px 16px;gap:16px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
 .paint-toolbar.visible{display:flex;}
@@ -257,7 +258,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     </div>
   </div>
   <div class="map-wrap" style="position:relative">
-    <div class="edit-instructions" id="editInstructions" style="display:flex">
+    <div class="edit-instructions" id="editInstructions">
       <div class="instructions-box">
         <h3 style="margin-top:0">Fine-Tune Your Map</h3>
         <p>Hold the mouse button and drag to paint adjustments onto specific areas.
@@ -401,12 +402,6 @@ function renderEditMap(){
 }
 
 function initPaintToolbar(){
-  document.getElementById('startEditingBtn').addEventListener('click',function(){
-    document.getElementById('editInstructions').style.display='none';
-    document.getElementById('paintToolbar').classList.add('visible');
-    document.getElementById('mapEdit').classList.add('paint-mode');
-    mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable();
-  });
   document.getElementById('paintRaiseBtn').addEventListener('click',function(){paintMode='raise';this.classList.add('active');document.getElementById('paintLowerBtn').classList.remove('active');});
   document.getElementById('paintLowerBtn').addEventListener('click',function(){paintMode='lower';this.classList.add('active');document.getElementById('paintRaiseBtn').classList.remove('active');});
   document.getElementById('brushSizeSlider').addEventListener('input',function(){
@@ -441,14 +436,26 @@ function initPaintToolbar(){
   document.addEventListener('mouseup',stopPainting);
 }
 
+document.getElementById('startEditingBtn').addEventListener('click',function(){
+  document.getElementById('editInstructions').classList.remove('visible');
+  document.getElementById('paintToolbar').classList.add('visible');
+  document.getElementById('mapEdit').classList.add('paint-mode');
+  if (mapEdit) { mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable(); }
+});
+
 document.getElementById('goToEditBtn').addEventListener('click',function(){
   document.getElementById('screen2').classList.remove('active');
   document.getElementById('screen3').classList.add('active');
-  document.getElementById('editInstructions').style.display='flex';
+  document.getElementById('editInstructions').classList.add('visible');
   document.getElementById('paintToolbar').classList.remove('visible');
   document.getElementById('mapEdit').classList.remove('paint-mode');
   isPainting=false;
-  setTimeout(renderEditMap,50);
+  // Wait for geojsonData if it hasn't finished loading yet
+  function tryRender() {
+    if (geojsonData) { setTimeout(renderEditMap, 50); }
+    else { setTimeout(tryRender, 100); }
+  }
+  tryRender();
 });
 
 document.getElementById('backToMapBtn').addEventListener('click',function(){
