@@ -214,7 +214,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
   <div class="header">
     <div>
       <h1>Your Personalized Climate Suitability Map</h1>
-      <p>Based on your priorities &mdash; green = suitable, red = not suitable (threshold: 0.5)</p>
+      <p>Based on your priorities &mdash; blue = more suitable, red = less suitable</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" id="backBtn" style="padding:8px 18px;font-size:13px;">&#8592; Adjust Priorities</button>
@@ -227,16 +227,38 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     <div id="map"></div>
     <div class="weights-summary" id="weightsSummary"></div>
     <div class="legend">
-      <div class="legend-title">Suitability</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
-        <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><div style="width:16px;height:16px;background:#2ecc71;border-radius:3px;flex-shrink:0;"></div><span>Suitable (&ge;0.5)</span></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><div style="width:16px;height:16px;background:#e74c3c;border-radius:3px;flex-shrink:0;"></div><span>Not suitable (&lt;0.5)</span></div>
-      </div>
+      <div class="legend-title">Suitability Score</div>
+      <div class="legend-gradient"></div>
+      <div class="legend-labels"><span>Low</span><span>High</span></div>
     </div>
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+// ── Hold-to-repeat for stepper buttons ───────────────────────────────────
+function makeHoldable(btn, fn) {
+  var holdTimer = null, holdInterval = null;
+  function start(e) {
+    e.preventDefault();
+    fn();
+    holdTimer = setTimeout(function() {
+      holdInterval = setInterval(fn, 60);
+    }, 400);
+  }
+  function stop() {
+    clearTimeout(holdTimer); clearInterval(holdInterval);
+    holdTimer = null; holdInterval = null;
+  }
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('mouseup',   stop);
+  btn.addEventListener('mouseleave',stop);
+  btn.addEventListener('touchend',  stop);
+  btn.addEventListener('touchcancel',stop);
+}
+
 // ── Screens + Paint ──────────────────────────────────────────────────────
 document.getElementById('startBtn').addEventListener('click',function(){
   document.getElementById('screen0').classList.remove('active');
@@ -260,13 +282,13 @@ document.getElementById('backBtn').addEventListener('click',function(){
 });
 
 // ── Paint ────────────────────────────────────────────────────────────────
-var paintMode='raise', isBinary=true, brushRadiusKm=50;
+var paintMode='raise', isBinary=false, brushRadiusKm=50;
 var paintScores={}, editedCells={}, undoStack=[];
 var isPainting=false, paintInterval=null, lastPaintLatLng=null, paintedThisStroke={};
 var paintMinS=0, paintMaxS=1;
 var mapEdit=null, gridLayerEdit=null;
 
-function paintCellColor(s){return s>=0.5?'#2ecc71':'#e74c3c';}
+function paintCellColor(s){var t=paintMaxS>paintMinS?(s-paintMinS)/(paintMaxS-paintMinS):0.5;t=Math.max(0,Math.min(1,t));return interpolateColor(t);}
 
 function cellsInBrush(latlng){
   var R=6371,hits=[];
@@ -292,7 +314,7 @@ function recolorLayers(layers){
 function nudgeTick(){
   if(!isPainting||!lastPaintLatLng)return;
   var hits=cellsInBrush(lastPaintLatLng), changed={};
-  hits.forEach(function(cid){ if (!paintedThisStroke[cid]) { var cur=paintScores[cid]; paintScores[cid]=cur>=0.5?0.0:1.0; editedCells[cid]=true; paintedThisStroke[cid]=true; changed[cid]=true; } });
+  hits.forEach(function(cid){ var cur=paintScores[cid]; var next=paintMode==='raise'?Math.min(1,cur+0.02):Math.max(0,cur-0.02); if(next!==cur){paintScores[cid]=next;editedCells[cid]=true;changed[cid]=true;} });
   if(Object.keys(changed).length>0){
     var ls=[]; gridLayerEdit.eachLayer(function(l){if(changed[l.feature.properties.cell_id])ls.push(l);});
     recolorLayers(ls);
@@ -322,7 +344,7 @@ function renderEditMap(){
   gridLayerEdit=L.geoJSON(geojsonData,{
     style:function(feature){
       var raw=computeComposite(feature.properties);
-      return {fillColor:raw >= 0.5 ? '#2ecc71' : '#e74c3c',fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5};
+      return {fillColor:interpolateColor(maxS > minS ? (raw-minS)/(maxS-minS) : 0.5),fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5};
     }
   }).addTo(mapEdit);
   mapEdit.fitBounds(gridLayerEdit.getBounds());
@@ -340,6 +362,8 @@ function initPaintToolbar(){
     document.getElementById('mapEdit').classList.add('paint-mode');
     mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable();
   });
+  document.getElementById('paintRaiseBtn').addEventListener('click',function(){paintMode='raise';this.classList.add('active');document.getElementById('paintLowerBtn').classList.remove('active');});
+  document.getElementById('paintLowerBtn').addEventListener('click',function(){paintMode='lower';this.classList.add('active');document.getElementById('paintRaiseBtn').classList.remove('active');});
   document.getElementById('brushSizeSlider').addEventListener('input',function(){
     brushRadiusKm=parseInt(this.value);
     var px=10+(brushRadiusKm/300)*28;
@@ -474,8 +498,8 @@ function buildSliderCard(container, factorList) {
         document.getElementById('slider-' + fid).value = v;
         updateAllUI();
       }
-      document.getElementById('btn-minus-' + fid).addEventListener('click', function() { setV(weights[fid]-1); });
-      document.getElementById('btn-plus-'  + fid).addEventListener('click', function() { setV(weights[fid]+1); });
+      makeHoldable(document.getElementById('btn-minus-' + fid), function() { setV(weights[fid]-1); });
+      makeHoldable(document.getElementById('btn-plus-'  + fid), function() { setV(weights[fid]+1); });
       document.getElementById('slider-'    + fid).addEventListener('input', function() { setV(parseInt(this.value)); });
     })(f.id);
   });
@@ -534,8 +558,8 @@ buildSliderCard(document.getElementById('costGrid'), COST);
         document.getElementById('slider-' + id).value = v;
         updateAllUI();
       }
-      document.getElementById('btn-minus-' + id).addEventListener('click', function() { setW(weatherWeights[id]-1); });
-      document.getElementById('btn-plus-'  + id).addEventListener('click', function() { setW(weatherWeights[id]+1); });
+      makeHoldable(document.getElementById('btn-minus-' + id), function() { setW(weatherWeights[id]-1); });
+      makeHoldable(document.getElementById('btn-plus-'  + id), function() { setW(weatherWeights[id]+1); });
       document.getElementById('slider-'    + id).addEventListener('input', function() { setW(parseInt(this.value)); });
     })(wv.id);
   });
@@ -585,8 +609,8 @@ buildSliderCard(document.getElementById('costGrid'), COST);
 
   function setU(v){v=Math.max(0,Math.min(v,BUDGET-getTotalAllocated('__urban__')));urbanWeight=v;document.getElementById('slider-urban-group').value=v;updateAllUI();}
   document.getElementById('slider-urban-group').addEventListener('input',function(){setU(parseInt(this.value));});
-  document.getElementById('btn-minus-urban').addEventListener('click',function(){setU(urbanWeight-1);});
-  document.getElementById('btn-plus-urban').addEventListener('click',function(){setU(urbanWeight+1);});
+  makeHoldable(document.getElementById('btn-minus-urban'), function(){setU(urbanWeight-1);});
+  makeHoldable(document.getElementById('btn-plus-urban'), function(){setU(urbanWeight+1);});
 })();
 
 // ── Politics card ─────────────────────────────────────────────────────────
@@ -648,8 +672,8 @@ buildSliderCard(document.getElementById('costGrid'), COST);
     (function(pid){
       function setP(v){v=Math.max(0,Math.min(v,BUDGET-getTotalAllocated('__pol_'+pid+'__')));politicsWeights[pid]=v;document.getElementById('slider-'+pid).value=v;updateAllUI();}
       document.getElementById('slider-'+pid).addEventListener('input',function(){setP(parseInt(this.value));});
-      document.getElementById('btn-minus-'+pid).addEventListener('click',function(){setP(politicsWeights[pid]-1);});
-      document.getElementById('btn-plus-'+pid).addEventListener('click',function(){setP(politicsWeights[pid]+1);});
+      makeHoldable(document.getElementById('btn-minus-'+pid), function(){setP(politicsWeights[pid]-1);});
+      makeHoldable(document.getElementById('btn-plus-'+pid), function(){setP(politicsWeights[pid]+1);});
     })(id);
   });
 })();
@@ -836,7 +860,8 @@ function renderMap() {
   gridLayer = L.geoJSON(geojsonData, {
     style: function(feature) {
       var raw = computeComposite(feature.properties);
-      return { fillColor: raw >= 0.5 ? '#2ecc71' : '#e74c3c', fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
+      var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
+      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
     },
     onEachFeature: function(feature, layer) {
       layer.on('mouseover', function(e) {
@@ -899,9 +924,9 @@ function renderMap() {
 <div class="modal-overlay" id="mapIntroModal">
   <div class="modal-box">
     <h2>Your Priority Map</h2>
-    <p>The map colors each area based on how well it matches your priorities. Higher-scoring areas appear in <strong>green</strong> (suitable); lower-scoring areas in <strong>red</strong> (not suitable).</p>
+    <p>The map colors each area based on how well it matches your priorities. Higher-scoring areas appear in <strong>blue</strong>; lower-scoring areas in <strong>red</strong>.</p>
     <p>Use <strong>&ldquo;&#8592; Adjust Priorities&rdquo;</strong> to go back and revise your point allocations at any time &mdash; the map will update automatically.</p>
-    <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to flip individual areas between suitable and not suitable directly on the map.</p>
+    <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to paint adjustments onto specific areas directly on the map.</p>
     <button class="btn btn-primary" id="modalOkBtn">View My Map &rarr;</button>
   </div>
 </div>
@@ -920,6 +945,8 @@ function renderMap() {
       <span style="font-size:11px;color:#999">Lg</span>
       <div id="brushPreview" style="width:18px;height:18px;border-radius:50%;background:rgba(44,62,80,0.25);border:2px solid #2c3e50;flex-shrink:0"></div>
     </div>
+      <button class="tool-btn active" id="paintRaiseBtn">&#9650; Raise</button>
+      <button class="tool-btn" id="paintLowerBtn">&#9660; Lower</button>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="tool-btn" id="paintUndoBtn" disabled>&#8617; Undo</button>
       <button class="tool-btn" id="paintResetBtn">&#8635; Reset</button>
