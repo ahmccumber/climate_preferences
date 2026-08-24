@@ -168,7 +168,8 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 <div class="screen" id="screen1">
   <div class="header">
     <h1>Set Your Priorities</h1>
-    <p>You have 100 points to allocate. Assign more points to factors that matter most to you.</p>
+    <p>You have 100 points to allocate. Assign more points to factors that matter most to you.
+    The resulting map calculates an area's suitability to your preferences by weighting these factors proportionally.</p>
   </div>
   <div class="body">
 
@@ -231,6 +232,16 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
       <div class="legend-gradient"></div>
       <div class="legend-labels"><span>Low</span><span>High</span></div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mapIntroModal">
+  <div class="modal-box">
+    <h2>Your Priority Map</h2>
+    <p>The map colors each area based on how well it matches your priorities. Higher-scoring areas appear in <strong>blue</strong>; lower-scoring areas in <strong>red</strong>.</p>
+    <p>Use <strong>&ldquo;&#8592; Adjust Priorities&rdquo;</strong> to go back and revise your point allocations at any time &mdash; the map will update automatically.</p>
+    <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to paint adjustments onto specific areas directly on the map.</p>
+    <button class="btn btn-primary" id="modalOkBtn">View My Map &rarr;</button>
   </div>
 </div>
 
@@ -441,14 +452,14 @@ var BUDGET = 100;
 // ── Variable definitions ──────────────────────────────────────────────────
 // direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
 var HAZARDS = [
-  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher raw value = greater risk.',   direction: -1 },
-  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher raw value = greater risk.',              direction: -1 },
-  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher raw value = greater risk.',                     direction: -1 },
-  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher raw value = greater risk.',     direction: -1 }
+  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher weight prioritizes safety from drought.',   direction: -1 },
+  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher weight prioritizes safety from wildfires.',              direction: -1 },
+  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher weight prioritizes safety from floods.',                     direction: -1 },
+  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher weight prioritizes safety from storms.',     direction: -1 }
 ];
 
 var COST = [
-  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher raw value = more expensive.', direction: -1 }
+  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher weight prioritizes affordability.', direction: -1 }
 ];
 
 // Urbanization: one slider, radio selects which variable gets the weight
@@ -920,17 +931,6 @@ function renderMap() {
 
 
 </script>
-
-<div class="modal-overlay" id="mapIntroModal">
-  <div class="modal-box">
-    <h2>Your Priority Map</h2>
-    <p>The map colors each area based on how well it matches your priorities. Higher-scoring areas appear in <strong>blue</strong>; lower-scoring areas in <strong>red</strong>.</p>
-    <p>Use <strong>&ldquo;&#8592; Adjust Priorities&rdquo;</strong> to go back and revise your point allocations at any time &mdash; the map will update automatically.</p>
-    <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to paint adjustments onto specific areas directly on the map.</p>
-    <button class="btn btn-primary" id="modalOkBtn">View My Map &rarr;</button>
-  </div>
-</div>
-
 <!-- SCREEN 3 -->
 <div class="screen" id="screen3">
   <div class="header">
