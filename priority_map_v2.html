@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Climate Migration Priorities</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f8;min-height:100vh;}
@@ -18,7 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .header p{font-size:13px;opacity:0.8;}
 
 /* ── Budget bar ── */
-.budget-bar-wrap{background:white;border-radius:8px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.budget-bar-wrap{background:white;border-radius:8px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);position:sticky;top:0;z-index:100;}
 .budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .budget-label{font-size:14px;font-weight:600;color:#2c3e50;}
 .budget-remaining{font-size:22px;font-weight:700;color:#2980b9;}
@@ -26,10 +25,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .budget-track{height:10px;background:#ecf0f1;border-radius:5px;overflow:hidden;}
 .budget-fill{height:100%;background:#2980b9;border-radius:5px;transition:width 0.2s,background 0.2s;}
 .budget-fill.zero{background:#27ae60;}
-.budget-remaining.over{color:#e74c3c;}
-.budget-bar-wrap.over{background:#fdf2f2;border:1.5px solid #f5c6cb;}
-.budget-fill.over{background:#e74c3c;}
-.budget-subtext.over{color:#e74c3c;font-weight:600;}
 .budget-subtext{font-size:12px;color:#7f8c8d;margin-top:6px;}
 
 /* ── Section headers ── */
@@ -43,40 +38,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .factor-card.disabled-card{opacity:0.45;pointer-events:none;}
 .factor-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
 .factor-name{font-size:14px;font-weight:600;color:#2c3e50;}
-.factor-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
-
-/* ── Stepper ── */
-.stepper{display:flex;align-items:center;border:1.5px solid #dde1e7;border-radius:7px;overflow:hidden;height:36px;}
-.stepper-btn{width:36px;height:36px;border:none;background:#f4f6f8;font-size:20px;cursor:pointer;color:#2c3e50;flex-shrink:0;transition:background 0.12s;display:flex;align-items:center;justify-content:center;}
-.stepper-btn:hover:not(:disabled){background:#dde1e7;}
-.stepper-btn:disabled{color:#bdc3c7;cursor:not-allowed;}
-.stepper-val{flex:1;text-align:center;font-size:18px;font-weight:700;color:#2980b9;background:white;border-left:1.5px solid #dde1e7;border-right:1.5px solid #dde1e7;height:100%;display:flex;align-items:center;justify-content:center;min-width:48px;}
-.stepper-val.zero{color:#bdc3c7;}
-.stepper-label{font-size:11px;color:#7f8c8d;margin-top:4px;}
-.stepper.teal .stepper-val{color:#16a085;}
-.stepper.teal .stepper-val.zero{color:#bdc3c7;}
-.stepper.purple .stepper-val{color:#8e44ad;}
-.stepper.purple .stepper-val.zero{color:#bdc3c7;}
-
-/* ── Pip track ── */
-.pip-track{display:flex;gap:3px;margin-top:7px;}
-.pip{flex:1;height:6px;border-radius:3px;background:#ecf0f1;overflow:hidden;position:relative;}
-.pip-fill{position:absolute;left:0;top:0;height:100%;border-radius:3px;transition:width 0.08s;}
-.pip-fill.blue{background:#2980b9;}
-.pip-fill.teal{background:#16a085;}
-.pip-fill.purple{background:#8e44ad;}
-
-/* ── Special: weather card ── */
-.weather-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;}
-.weather-card.has-points{border-color:#16a085;}
-.weather-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
-.weather-name{font-size:14px;font-weight:600;color:#2c3e50;}
-.weather-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
-.weather-choices{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
-.weather-choice{flex:1;min-width:120px;padding:9px 12px;border:2px solid #dde1e7;border-radius:6px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:#5a6c7d;transition:all 0.15s;background:white;}
-.weather-choice:hover{border-color:#16a085;color:#16a085;}
-.weather-choice.selected{border-color:#16a085;background:#16a085;color:white;}
-.weather-stepper-wrap{display:none;}
+.factor-points{font-size:20px;font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.factor-desc{font-size:12px;color:#7f8c8d;margin-bottom:10px;line-height:1.4;}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#ecf0f1;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+input[type=range]:disabled{opacity:0.35;cursor:not-allowed;}
+input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
 
 /* ── Special: urbanization card ── */
 .urban-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;grid-column:1/-1;}
@@ -105,7 +73,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pol-slider-row{display:flex;flex-direction:column;gap:4px;}
 .pol-slider-label{display:flex;justify-content:space-between;align-items:center;}
 .pol-slider-name{font-size:13px;font-weight:600;color:#2c3e50;}
-.pol-slider-sub{font-size:11px;color:#7f8c8d;margin-bottom:8px;}
+.pol-slider-pts{font-size:16px;font-weight:700;color:#8e44ad;}
+.pol-slider-sub{font-size:11px;color:#7f8c8d;margin-bottom:4px;}
+input[type=range].purple::-webkit-slider-thumb{background:#8e44ad;}
+input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 
 /* ── Footer ── */
 .footer-bar{background:white;border-top:1px solid #ddd;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -120,12 +91,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* ── Screen 2 map ── */
 #screen2 .header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
 .map-wrap{flex:1;position:relative;min-height:0;}
-#map{width:100%;height:100%;} #mapEdit{width:100%;height:100%;} #mapEdit.paint-mode{cursor:crosshair;}
+#map{width:100%;height:100%;}
 .legend{position:absolute;bottom:28px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:160px;}
 .legend-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
 .legend-gradient{height:12px;border-radius:3px;background:linear-gradient(to right,#d73027,#f46d43,#fdae61,#fee090,#ffffbf,#e0f3f8,#abd9e9,#74add1,#4575b4);margin-bottom:6px;}
 .legend-labels{display:flex;justify-content:space-between;font-size:11px;color:#7f8c8d;}
-.weights-summary{position:absolute;top:12px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);max-width:210px;}
+.weights-summary{position:absolute;top:12px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);max-width:210px;max-height:calc(100vh - 120px);overflow-y:auto;}
 .weights-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
 .weight-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:12px;}
 .weight-name{color:#5a6c7d;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -138,80 +109,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tt-score{font-size:16px;font-weight:700;margin-bottom:4px;}
 .tt-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;opacity:0.85;}
 
-#screen1 .body{flex:1;overflow-y:auto;padding:0 28px 10px;}
+#screen1 .body{flex:1;overflow-y:auto;padding:20px 28px 10px;}
 
-/* ── Screen 3: Edit/paint ─────────────────────────────────────────────── */
-#screen3 { position: relative; }
-.edit-instructions {
-  display: none;
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.55);
-  z-index: 1000;
-  justify-content: center;
-  align-items: center;
-}
-.instructions-box {
-  background: white;
-  border-radius: 12px;
-  padding: 30px 36px;
-  max-width: 460px;
-  width: 90%;
-  text-align: left;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-}
-.instructions-box h2 { margin: 0 0 12px; font-size: 20px; color: #2c3e50; }
-.instructions-box p  { margin: 0 0 10px; color: #555; }
-.instructions-box ul { margin: 0 0 10px; padding-left: 20px; line-height: 2; color: #555; }
-.paint-toolbar {
-  display: none;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-  padding: 8px 16px;
-  gap: 16px;
-  align-items: center;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-.paint-toolbar.visible { display: flex; }
-.toolbar-group { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #555; }
-.tool-btn {
-  padding: 6px 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #f8f8f8;
-  cursor: pointer;
-  font-size: 13px;
-  white-space: nowrap;
-}
-.tool-btn:hover { background: #eee; }
-.tool-btn.active { background: #2c3e50; color: white; border-color: #2c3e50; }
-.tool-btn:disabled { opacity: 0.4; cursor: default; }
-.brush-preview {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: rgba(44,62,80,0.25);
-  border: 2px solid #2c3e50;
-  display: inline-block;
-}
-#mapEdit.paint-mode { cursor: crosshair; }
-#mapEdit.pan-mode{cursor:grab;} #mapEdit.pan-mode:active{cursor:grabbing;}
-.paint-controls-disabled{opacity:0.4;pointer-events:none;}
-.state-label{font-size:10px;font-weight:700;color:rgba(30,30,30,0.72);text-shadow:0 0 4px #fff,0 0 8px #fff;pointer-events:none;white-space:nowrap;line-height:1;}
+/* ── Screen 0 ── */
+#screen0{background:#f7f8fa;justify-content:center;align-items:center;}
+.landing-card{background:white;border-radius:14px;padding:48px 52px;max-width:620px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,0.10);text-align:center;}
+.landing-card h1{font-size:26px;color:#2c3e50;margin-bottom:14px;}
+.landing-card p{font-size:15px;color:#555;line-height:1.7;margin-bottom:14px;}
+.landing-card .btn{font-size:15px;padding:12px 36px;margin-top:10px;}
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;justify-content:center;align-items:center;}
+.modal-overlay.visible{display:flex;}
+.modal-box{background:white;border-radius:14px;padding:36px 42px;max-width:540px;width:90%;box-shadow:0 6px 32px rgba(0,0,0,0.18);}
+.modal-box h2{font-size:20px;color:#2c3e50;margin-bottom:14px;}
+.modal-box p{font-size:14px;color:#555;line-height:1.7;margin-bottom:12px;}
+.modal-box .btn{font-size:14px;padding:10px 28px;margin-top:6px;}
+/* ── Steppers ── */
+.stepper-wrap{display:flex;align-items:center;border:1px solid #dde1e7;border-radius:6px;overflow:hidden;margin-top:10px;}
+.stepper-btn{width:38px;height:38px;border:none;background:#f4f6f8;color:#2c3e50;font-size:20px;line-height:1;cursor:pointer;flex-shrink:0;transition:background 0.15s;user-select:none;}
+.stepper-btn:hover:not(:disabled){background:#e0e5ec;}
+.stepper-btn:disabled{opacity:0.3;cursor:not-allowed;}
+.stepper-val{flex:1;text-align:center;font-size:17px;font-weight:700;color:#2980b9;background:white;padding:0 4px;}
+.stepper-val.zero{color:#bbb;font-weight:400;}
+/* ── Screens/paint ── */
+.screen{display:none;flex-direction:column;height:100vh;}
+.screen.active{display:flex;}
+.map-wrap{flex:1;position:relative;min-height:0;}
+#map,#mapEdit{width:100%;height:100%;}
+#screen3{position:relative;}
+.edit-instructions{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:1000;justify-content:center;align-items:center;}
+.instructions-box{background:white;border-radius:12px;padding:30px 36px;max-width:460px;}
+.paint-toolbar{display:none;background:#fff;border-bottom:1px solid #ddd;padding:8px 16px;gap:16px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
+.paint-toolbar.visible{display:flex;}
+.tool-btn{padding:6px 14px;border:1px solid #ccc;border-radius:6px;background:#f8f8f8;cursor:pointer;}
+.tool-btn.active{background:#2c3e50;color:white;border-color:#2c3e50;}
+#mapEdit.paint-mode{cursor:crosshair;}
 </style>
 </head>
 <body>
 
+<!-- SCREEN 0: Landing -->
+<div class="screen active" id="screen0">
+  <div class="landing-card">
+    <h1>Moving Preferences and Climate Change Mapping Exercise</h1>
+    <p>On the following page, you will build a personalized map of the lower 48 United States
+      showing which areas best match your preferences.</p>
+    <p>First, you will allocate points across factors that matter to you &mdash;
+      such as climate hazards, cost of living, place type, and more. You will have a total of
+      100 points to allocate. This will generate a map based on your priorities.</p>
+    <p>After seeing your map, you will have the opportunity to revise your
+      point allocations or make manual adjustments directly on the map before
+      submitting your final response.</p>
+    <button class="btn btn-primary" id="startBtn">Get Started &rarr;</button>
+  </div>
+</div>
+
 <!-- SCREEN 1 -->
-<div class="screen active" id="screen1">
+<div class="screen" id="screen1">
   <div class="header">
     <h1>Set Your Priorities</h1>
     <p>You have 100 points to allocate. Assign more points to factors that matter most to you.</p>
-    <p>The resulting map calculate an area's suitability to your preferences by weighting these factors proportionally.</p>
   </div>
   <div class="body">
 
-    <div class="budget-bar-wrap" style="position:sticky;top:0;z-index:100;border-radius:0;margin-bottom:0;border-bottom:1px solid #e8eaed;">
+    <div class="budget-bar-wrap">
       <div class="budget-header">
         <span class="budget-label">Points Remaining</span>
         <span class="budget-remaining" id="budgetDisplay">100</span>
@@ -221,20 +182,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
 
     <!-- Climate hazards -->
-    <div class="section-label" style="margin-top:20px;">Climate Hazards</div>
+    <div class="section-label">Climate Hazards</div>
     <div class="factors-grid" id="hazardGrid"></div>
 
     <!-- Cost of living -->
     <div class="section-label">Cost of Living</div>
     <div class="factors-grid" id="costGrid"></div>
 
-    <!-- Weather -->
-    <div class="section-label">Weather Preference</div>
-    <div class="factors-grid" id="weatherGrid"></div>
-
     <!-- Urbanization -->
     <div class="section-label">Place Type Preference</div>
     <div class="factors-grid" id="urbanGrid"></div>
+
+
+    <!-- Weather -->
+    <div class="section-label">Weather Preference</div>
+    <div class="factors-grid" id="weatherGrid"></div>
 
     <!-- Politics -->
     <div class="section-label">Political Environment</div>
@@ -252,356 +214,201 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="header">
     <div>
       <h1>Your Personalized Climate Suitability Map</h1>
-      <p>Based on your priorities &mdash; blue = more suitable, red = less suitable</p>
+      <p>Based on your priorities &mdash; green = suitable, red = not suitable (threshold: 0.5)</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" id="backBtn" style="padding:8px 18px;font-size:13px;">&#8592; Adjust Priorities</button>
       <button class="btn btn-success" id="goToEditBtn">&#9998; Fine-Tune My Map &#8594;</button>
+      <button class="btn btn-success" id="submitBtn">Submit &amp; Continue</button>
+      <div class="success-message" id="successMsg">Saved!</div>
     </div>
   </div>
   <div class="map-wrap">
     <div id="map"></div>
     <div class="weights-summary" id="weightsSummary"></div>
     <div class="legend">
-      <div class="legend-title">Suitability Score</div>
-      <div class="legend-gradient"></div>
-      <div class="legend-labels"><span>Low</span><span>High</span></div>
+      <div class="legend-title">Suitability</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><div style="width:16px;height:16px;background:#2ecc71;border-radius:3px;flex-shrink:0;"></div><span>Suitable (&ge;0.5)</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><div style="width:16px;height:16px;background:#e74c3c;border-radius:3px;flex-shrink:0;"></div><span>Not suitable (&lt;0.5)</span></div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- SCREEN 3 -->
-<div class="screen" id="screen3">
-  <div class="header">
-    <div>
-      <h1>Fine-Tune Your Map</h1>
-      <p>Paint to raise or lower suitability scores</p>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-primary" id="backToMapBtn" style="padding:8px 18px;font-size:13px;">&#8592; Back to Map</button>
-      <button class="btn btn-success" id="submitBtn">Submit &amp; Continue</button>
-      <div class="success-message" id="successMsg">Saved!</div>
-    </div>
-  </div>
-  <!-- Paint instructions overlay -->
-  <div class="edit-instructions" id="editInstructions">
-    <div class="instructions-box">
-      <h2>Fine-Tune Your Map</h2>
-      <p>On this page you can make manual changes to your map to reflect any specific exceptions to the preferences you entered.</p>
-      <p>Use the paint tool to manually raise or lower suitability scores for specific areas.</p>
-      <ul>
-        <li>Select <strong>Raise</strong> or <strong>Lower</strong></li>
-        <li>Adjust brush size</li>
-        <li>Click and drag over areas on the map</li>
-      </ul>
-      <button class="btn btn-success" id="startEditingBtn" style="margin-top:10px;">Start Editing &#8594;</button>
-    </div>
-  </div>
-  <!-- Paint toolbar -->
-  <div class="paint-toolbar" id="paintToolbar">
-    <div class="toolbar-group">
-      <button class="tool-btn" id="panModeBtn" title="Switch to pan/zoom mode">&#128197; Pan</button>
-      <button class="tool-btn active" id="paintModeBtn" title="Switch to paint mode">&#9998; Paint</button>
-    </div>
-    <div class="toolbar-group" id="paintControls">
-      <button class="tool-btn active" id="paintRaiseBtn">&#9650; Raise</button>
-      <button class="tool-btn" id="paintLowerBtn">&#9660; Lower</button>
-    </div>
-    <div class="toolbar-group">
-      <label style="font-size:12px;color:#555;">Brush size</label>
-      <input type="range" id="brushSizeSlider" min="30" max="300" value="100" style="width:100px;">
-      <div class="brush-preview" id="brushPreview"></div>
-    </div>
-    <div class="toolbar-group">
-      <button class="tool-btn" id="paintUndoBtn" disabled>&#8592; Undo</button>
-      <button class="tool-btn" id="paintResetBtn">Reset All</button>
-    </div>
-  </div>
-  <div class="map-wrap">
-    <div id="mapEdit"></div>
-    <div class="weights-summary" id="weightsSummaryEdit"></div>
-    <div class="legend">
-      <div class="legend-title">Suitability Score</div>
-      <div class="legend-gradient"></div>
-      <div class="legend-labels"><span>Low</span><span>High</span></div>
-    </div>
-  </div>
-</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+// ── Screens + Paint ──────────────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click',function(){
+  document.getElementById('screen0').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-// ── Paint / Edit screen variables ─────────────────────────────────────────
-var mapEdit = null, gridLayerEdit = null;
-var paintActive = false, isPainting = false, paintMode = 'raise';
-var brushRadiusKm = 100, lastPaintLatLng = null, paintInterval = null;
-var paintedThisStroke = {}, editedCells = {}, undoStack = [];
-var paintMinS = 0, paintMaxS = 1, paintReady = false;
+document.getElementById('proceedBtn').addEventListener('click',function(){
+  document.getElementById('screen1').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  document.getElementById('mapIntroModal').classList.add('visible');
+  setTimeout(function(){renderMap();},50);
+});
 
-function paintCellColor(score) {
-  var t = (paintMaxS > paintMinS) ? (score - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-  t = Math.max(0, Math.min(1, t));
-  return interpolateColor(t);
-}
+document.getElementById('modalOkBtn').addEventListener('click',function(){
+  document.getElementById('mapIntroModal').classList.remove('visible');
+});
 
-var _recolorPending = false, _recolorQueue = null;
-function recolorLayers(layers) {
-  var gl = gridLayerEdit;
-  if (!gl) return;
-  // Merge into queue
-  if (layers) {
-    if (!_recolorQueue) _recolorQueue = [];
-    layers.forEach(function(l){ _recolorQueue.push(l); });
-  } else {
-    _recolorQueue = null; // null = all layers
-  }
-  if (_recolorPending) return; // already scheduled
-  _recolorPending = true;
-  requestAnimationFrame(function() {
-    _recolorPending = false;
-    var fn = function(l) {
-      var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
-      l.setStyle({ fillColor: paintCellColor(s) });
-    };
-    if (_recolorQueue) { _recolorQueue.forEach(fn); } else { gl.eachLayer(fn); }
-    _recolorQueue = null;
-  });
-}
+document.getElementById('backBtn').addEventListener('click',function(){
+  document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
 
-function cellsInBrush(latlng) {
-  var R = 6371, hits = [];
-  if (!gridLayerEdit) return hits;
-  gridLayerEdit.eachLayer(function(l) {
-    var c = l.getBounds().getCenter();
-    var dLat = (c.lat - latlng.lat) * Math.PI / 180;
-    var dLng = (c.lng - latlng.lng) * Math.PI / 180;
-    var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-    if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) <= brushRadiusKm) hits.push(l);
+// ── Paint ────────────────────────────────────────────────────────────────
+var paintMode='raise', isBinary=true, brushRadiusKm=50;
+var paintScores={}, editedCells={}, undoStack=[];
+var isPainting=false, paintInterval=null, lastPaintLatLng=null, paintedThisStroke={};
+var paintMinS=0, paintMaxS=1;
+var mapEdit=null, gridLayerEdit=null;
+
+function paintCellColor(s){return s>=0.5?'#2ecc71':'#e74c3c';}
+
+function cellsInBrush(latlng){
+  var R=6371,hits=[];
+  gridLayerEdit.eachLayer(function(l){
+    var cid=l.feature.properties.cell_id, c=l.getBounds().getCenter();
+    var dLat=(c.lat-latlng.lat)*Math.PI/180, dLng=(c.lng-latlng.lng)*Math.PI/180;
+    var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    if(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))<=brushRadiusKm) hits.push(cid);
   });
   return hits;
 }
 
-var paintDelta = 0.02; // set to 0.005 on touch devices
-function nudgeTick() {
-  if (!isPainting || !lastPaintLatLng) return;
-  var layers = cellsInBrush(lastPaintLatLng);
-  var changed = [];
-  layers.forEach(function(l) {
-    var cur = l._paintScore;
-    var next = paintMode === 'raise' ? Math.min(1, cur + paintDelta) : Math.max(0, cur - paintDelta);
-    if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
+function recolorLayers(layers){
+  var target=layers||[];
+  if(!layers){gridLayerEdit.eachLayer(function(l){target.push(l);});}
+  target.forEach(function(l){
+    var cid=l.feature?l.feature.properties.cell_id:null; if(!cid)return;
+    var s=paintScores[cid]!==undefined?paintScores[cid]:0.5;
+    l.setStyle({fillColor:paintCellColor(s),fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5});
   });
-  if (changed.length) recolorLayers(changed);
 }
 
-function stopPainting() {
-  if (isPainting) { isPainting = false; clearTimeout(paintInterval); clearInterval(paintInterval); paintInterval = null; paintedThisStroke = {}; }
-}
-
-function renderEditMap() {
-  paintReady = false;
-  if (mapEdit) { mapEdit.remove(); mapEdit = null; }
-  gridLayerEdit = null; editedCells = {}; undoStack = [];
-
-  mapEdit = L.map('mapEdit', { zoomControl: true }).setView([39.5, -98.35], 4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
-  }).addTo(mapEdit);
-
-  var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
-  paintMinS = Math.min.apply(null, scores);
-  paintMaxS = Math.max.apply(null, scores);
-
-  gridLayerEdit = L.geoJSON(geojsonData, {
-    style: function(feature) {
-      var raw = computeComposite(feature.properties);
-      var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5, stroke: true };
-    },
-    onEachFeature: function(feature, layer) {
-      layer.on('mouseout', function() {
-        layer.closeTooltip();
-        if (paintReady && editedCells[layer._leaflet_id]) {
-          layer.setStyle({ fillColor: paintCellColor(layer._paintScore), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-        } else {
-          var raw = computeComposite(feature.properties);
-          var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-          layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-        }
-      });
-      layer.on('mousedown', function(e) {
-        if (!paintActive) return;
-        L.DomEvent.stopPropagation(e);
-        if (!isPainting) {
-          isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
-          var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-          undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-          document.getElementById('paintUndoBtn').disabled = false;
-          paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
-        }
-      });
-      layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
-      layer.on('mouseup', stopPainting);
-    }
-  }).addTo(mapEdit);
-  addStateOverlay(mapEdit);
-
-  gridLayerEdit.eachLayer(function(l) {
-    l._paintScore = computeComposite(l.feature.properties);
-    l._baseScore = l._paintScore;
-  });
-
-  mapEdit.on('mousedown', function(e) {
-    if (!paintActive) return;
-    L.DomEvent.stopPropagation(e);
-    isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
-    var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-    undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-    document.getElementById('paintUndoBtn').disabled = false;
-    paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
-  });
-  mapEdit.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
-  mapEdit.on('mouseup', stopPainting);
-  document.addEventListener('mouseup', stopPainting);
-
-  // Touch paint — slower interval, no initial tick, so brief taps don't over-paint
-  (function() {
-    var el = document.getElementById('mapEdit');
-    var touchMoved = false;
-    function ptToLatLng(touch) {
-      var r = el.getBoundingClientRect();
-      return mapEdit.containerPointToLatLng(L.point(touch.clientX - r.left, touch.clientY - r.top));
-    }
-    el.addEventListener('touchstart', function(e) {
-      if (!paintActive) return;
-      e.preventDefault();
-      paintDelta = 0.005; // gentle delta for touch (4x smaller than mouse)
-      touchMoved = false;
-      isPainting = true; paintedThisStroke = {}; lastPaintLatLng = ptToLatLng(e.touches[0]);
-      var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-      undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-      document.getElementById('paintUndoBtn').disabled = false;
-      // Only paint while actively dragging — brief taps do nothing
-      paintInterval = setInterval(function() {
-        if (touchMoved) nudgeTick();
-      }, 120);
-    }, { passive: false });
-    el.addEventListener('touchmove', function(e) {
-      if (!paintActive || !isPainting) return;
-      e.preventDefault();
-      touchMoved = true;
-      lastPaintLatLng = ptToLatLng(e.touches[0]);
-    }, { passive: false });
-    el.addEventListener('touchend', function() {
-      touchMoved = false;
-      stopPainting();
-    }, { passive: true });
-  })();
-
-  // Weights summary
-  var rows = [];
-  HAZARDS.concat(COST).forEach(function(f){ if (weights[f.id] > 0) rows.push({label:f.label, w:weights[f.id]}); });
-  if (urbanWeight > 0 && urbanChoice) rows.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight });
-  document.getElementById('weightsSummaryEdit').innerHTML =
-    '<div class="weights-title">Your Weights</div>' +
-    rows.map(function(r){ return '<div class="weight-row"><span class="weight-name">'+r.label+'</span><span class="weight-val">'+r.w+'</span></div>'; }).join('');
-
-  paintReady = true;
-  document.getElementById('paintUndoBtn').disabled = true;
-}
-
-// ── Screen 3 navigation ────────────────────────────────────────────────────
-document.getElementById('goToEditBtn').addEventListener('click', function() {
-  document.getElementById('screen2').classList.remove('active');
-  document.getElementById('screen3').classList.add('active');
-  document.getElementById('editInstructions').style.display = 'flex';
-  document.getElementById('paintToolbar').classList.remove('visible');
-  paintActive = false;
-  setTimeout(function() { renderEditMap(); }, 50);
-});
-
-document.getElementById('backToMapBtn').addEventListener('click', function() {
-  stopPainting(); paintActive = false;
-  document.getElementById('mapEdit').classList.remove('paint-mode');
-  document.getElementById('mapEdit').classList.remove('pan-mode');
-  document.getElementById('screen3').classList.remove('active');
-  document.getElementById('screen2').classList.add('active');
-  requestAnimationFrame(function() { if (map) map.invalidateSize({animate:false}); });
-});
-
-document.getElementById('startEditingBtn').addEventListener('click', function() {
-  document.getElementById('editInstructions').style.display = 'none';
-  document.getElementById('paintToolbar').classList.add('visible');
-  // Start in paint mode
-  setPaintMode(true);
-});
-
-function setPaintMode(painting) {
-  paintActive = painting;
-  var mapEl = document.getElementById('mapEdit');
-  if (painting) {
-    mapEl.classList.add('paint-mode');
-    mapEl.classList.remove('pan-mode');
-    document.getElementById('paintModeBtn').classList.add('active');
-    document.getElementById('panModeBtn').classList.remove('active');
-    document.getElementById('paintControls').classList.remove('paint-controls-disabled');
-    if (mapEdit) {
-      mapEdit.dragging.disable();
-      mapEdit.scrollWheelZoom.disable();
-      mapEdit.doubleClickZoom.disable();
-      if (mapEdit.tap) mapEdit.tap.disable();
-      if (mapEdit.touchZoom) mapEdit.touchZoom.disable();
-    }
-  } else {
-    stopPainting();
-    mapEl.classList.remove('paint-mode');
-    mapEl.classList.add('pan-mode');
-    document.getElementById('panModeBtn').classList.add('active');
-    document.getElementById('paintModeBtn').classList.remove('active');
-    document.getElementById('paintControls').classList.add('paint-controls-disabled');
-    if (mapEdit) {
-      mapEdit.dragging.enable();
-      mapEdit.scrollWheelZoom.enable();
-      mapEdit.doubleClickZoom.enable();
-      if (mapEdit.tap) mapEdit.tap.enable();
-      if (mapEdit.touchZoom) mapEdit.touchZoom.enable();
-    }
+function nudgeTick(){
+  if(!isPainting||!lastPaintLatLng)return;
+  var hits=cellsInBrush(lastPaintLatLng), changed={};
+  hits.forEach(function(cid){ if (!paintedThisStroke[cid]) { var cur=paintScores[cid]; paintScores[cid]=cur>=0.5?0.0:1.0; editedCells[cid]=true; paintedThisStroke[cid]=true; changed[cid]=true; } });
+  if(Object.keys(changed).length>0){
+    var ls=[]; gridLayerEdit.eachLayer(function(l){if(changed[l.feature.properties.cell_id])ls.push(l);});
+    recolorLayers(ls);
   }
 }
 
-document.getElementById('panModeBtn').addEventListener('click', function() { setPaintMode(false); });
-document.getElementById('paintModeBtn').addEventListener('click', function() { setPaintMode(true); });
-document.getElementById('paintRaiseBtn').addEventListener('click', function() {
-  paintMode = 'raise';
-  this.classList.add('active');
-  document.getElementById('paintLowerBtn').classList.remove('active');
+function stopPainting(){
+  if(!isPainting)return;
+  isPainting=false; paintedThisStroke={};
+  lastPaintLatLng=null;
+  if(paintInterval){clearInterval(paintInterval);paintInterval=null;}
+}
+
+function renderEditMap(){
+  if(mapEdit){mapEdit.remove();mapEdit=null;gridLayerEdit=null;}
+  mapEdit=L.map('mapEdit',{zoomControl:true,attributionControl:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(mapEdit);
+  paintScores={}; var allS=[];
+  geojsonData.features.forEach(function(f){
+    var s=computeComposite(f.properties);
+    paintScores[f.properties.cell_id]=s; allS.push(s);
+  });
+  window._basePaintScores=JSON.parse(JSON.stringify(paintScores));
+  paintMinS=Math.min.apply(null,allS); paintMaxS=Math.max.apply(null,allS);
+  editedCells={}; undoStack=[];
+  document.getElementById('paintUndoBtn').disabled=true;
+  gridLayerEdit=L.geoJSON(geojsonData,{
+    style:function(feature){
+      var raw=computeComposite(feature.properties);
+      return {fillColor:raw >= 0.5 ? '#2ecc71' : '#e74c3c',fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5};
+    }
+  }).addTo(mapEdit);
+  mapEdit.fitBounds(gridLayerEdit.getBounds());
+  setTimeout(function(){mapEdit.invalidateSize();},60);
+  if(!window._paintInitialized){
+    window._paintInitialized=true;
+    setTimeout(initPaintToolbar,80);
+  }
+}
+
+function initPaintToolbar(){
+  document.getElementById('startEditingBtn').addEventListener('click',function(){
+    document.getElementById('editInstructions').style.display='none';
+    document.getElementById('paintToolbar').classList.add('visible');
+    document.getElementById('mapEdit').classList.add('paint-mode');
+    mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable();
+  });
+  document.getElementById('brushSizeSlider').addEventListener('input',function(){
+    brushRadiusKm=parseInt(this.value);
+    var px=10+(brushRadiusKm/300)*28;
+    var bp=document.getElementById('brushPreview');
+    bp.style.width=px+'px'; bp.style.height=px+'px';
+  });
+  document.getElementById('paintUndoBtn').addEventListener('click',function(){
+    if(!undoStack.length)return;
+    paintScores=undoStack.pop(); editedCells={};
+    Object.keys(paintScores).forEach(function(k){if(paintScores[k]!==window._basePaintScores[k])editedCells[k]=true;});
+    this.disabled=undoStack.length===0; recolorLayers(null);
+  });
+  document.getElementById('paintResetBtn').addEventListener('click',function(){
+    if(!confirm('Reset all manual edits?'))return;
+    undoStack.push(JSON.parse(JSON.stringify(paintScores)));
+    paintScores=JSON.parse(JSON.stringify(window._basePaintScores));
+    editedCells={}; document.getElementById('paintUndoBtn').disabled=false;
+    recolorLayers(null);
+  });
+  mapEdit.on('mousedown',function(e){
+    isPainting=true; paintedThisStroke={};
+    lastPaintLatLng=e.latlng;
+    undoStack.push(JSON.parse(JSON.stringify(paintScores)));
+    document.getElementById('paintUndoBtn').disabled=false;
+    nudgeTick();
+    paintInterval=setInterval(nudgeTick,80);
+  });
+  mapEdit.on('mousemove',function(e){lastPaintLatLng=e.latlng;});
+  mapEdit.on('mouseup',stopPainting);
+  document.addEventListener('mouseup',stopPainting);
+}
+
+document.getElementById('goToEditBtn').addEventListener('click',function(){
+  document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen3').classList.add('active');
+  document.getElementById('editInstructions').style.display='flex';
+  document.getElementById('paintToolbar').classList.remove('visible');
+  document.getElementById('mapEdit').classList.remove('paint-mode');
+  isPainting=false;
+  setTimeout(renderEditMap,50);
 });
-document.getElementById('paintLowerBtn').addEventListener('click', function() {
-  paintMode = 'lower';
-  this.classList.add('active');
-  document.getElementById('paintRaiseBtn').classList.remove('active');
+
+document.getElementById('backToMapBtn').addEventListener('click',function(){
+  stopPainting();
+  document.getElementById('screen3').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  setTimeout(function(){if(map)map.invalidateSize();},60);
 });
-document.getElementById('brushSizeSlider').addEventListener('input', function() {
-  brushRadiusKm = parseInt(this.value);
-  var px = 10 + (brushRadiusKm / 300) * 28;
-  document.getElementById('brushPreview').style.width = px + 'px';
-  document.getElementById('brushPreview').style.height = px + 'px';
+
+// ── Submit ────────────────────────────────────────────────────────────────
+document.getElementById('submitBtn').addEventListener('click',function(){
+  var wv={};
+  HAZARDS.concat(COST).forEach(function(f){wv[f.id]=weights[f.id];});
+  wv.urban=urbanWeight; wv.election_diff=politicsWeights.election_diff;
+  wv.state_election_diff=politicsWeights.state_election_diff;
+  wv.extreme_heat=weatherWeights.extreme_heat; wv.extreme_cold=weatherWeights.extreme_cold;
+  var payload={
+    weights:wv, urban_preference:urbanChoice, political_alignment:politicsAlignment,
+    weather_heat_direction:weatherDirections.extreme_heat,
+    weather_cold_direction:weatherDirections.extreme_cold,
+    cell_scores:geojsonData?geojsonData.features.map(function(feat){
+      var cid=feat.properties.cell_id;
+      var s=paintScores[cid]!==undefined?paintScores[cid]:computeComposite(feat.properties);
+      return {cell_id:cid,composite_score:parseFloat(s.toFixed(4)),manually_edited:editedCells[cid]?true:false};
+    }):[]
+  };
+  window.parent.postMessage({type:'priorityMapData',data:payload,dataString:JSON.stringify(payload),autoAdvance:true},'*');
 });
-document.getElementById('paintUndoBtn').addEventListener('click', function() {
-  if (!undoStack.length) return;
-  var snap = undoStack.pop();
-  gridLayerEdit.eachLayer(function(l) { if (snap[l._leaflet_id] !== undefined) l._paintScore = snap[l._leaflet_id]; });
-  editedCells = {};
-  gridLayerEdit.eachLayer(function(l) { if (l._paintScore !== l._baseScore) editedCells[l._leaflet_id] = true; });
-  this.disabled = undoStack.length === 0;
-  recolorLayers(null);
-});
-document.getElementById('paintResetBtn').addEventListener('click', function() {
-  var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
-  undoStack.push(snap);
-  document.getElementById('paintUndoBtn').disabled = false;
-  gridLayerEdit.eachLayer(function(l) { l._paintScore = l._baseScore; });
-  editedCells = {}; recolorLayers(null);
-});
+
 </script>
 <script>
 var isEmbedded = window.self !== window.top;
@@ -610,27 +417,17 @@ var BUDGET = 100;
 // ── Variable definitions ──────────────────────────────────────────────────
 // direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
 var HAZARDS = [
-  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher weight prioritizes safety from drought.',   direction: -1 },
-  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher weight prioritizes safety from wildfires.',              direction: -1 },
-  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher weight = prioritizes safety from floods.',                     direction: -1 },
-  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher weight prioritizes safety from storms.',     direction: -1 }
+  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher raw value = greater risk.',   direction: -1 },
+  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher raw value = greater risk.',              direction: -1 },
+  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher raw value = greater risk.',                     direction: -1 },
+  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher raw value = greater risk.',     direction: -1 }
 ];
 
 var COST = [
-  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher weight prioritizes affordability', direction: -1 }
+  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher raw value = more expensive.', direction: -1 }
 ];
 
-// Weather: two cards, each with direction choice + stepper
-var WEATHER = [
-  { id: 'extreme_heat', label: 'Summer Heat', desc: 'Maximum temperature. Choose whether more heat is desirable, then allocate points.',
-    choiceA: { label: 'More heat is better', direction: 1 }, choiceB: { label: 'Less heat is better', direction: -1 } },
-  { id: 'extreme_cold', label: 'Winter Cold', desc: 'Minimum temperature. Choose whether cold winters are desirable, then allocate points.',
-    choiceA: { label: 'I prefer cold winters', direction: 1 }, choiceB: { label: 'I prefer mild winters', direction: -1 } }
-];
-var weatherDirections = { extreme_heat: null, extreme_cold: null };
-var weatherWeights   = { extreme_heat: 0,    extreme_cold: 0    };
-
-// Urbanization: one stepper, radio selects which variable gets the weight
+// Urbanization: one slider, radio selects which variable gets the weight
 var URBAN_OPTIONS = [
   { id: 'urban',    label: 'Urban',    desc: 'Prefer cities and dense metro areas.' },
   { id: 'suburban', label: 'Suburban', desc: 'Prefer suburban communities.' },
@@ -646,137 +443,101 @@ var urbanWeight = 0;
 var politicsAlignment = null; // 'liberal' | 'conservative'
 var politicsWeights = { election_diff: 0, state_election_diff: 0 };
 
+// Weather
+var weatherDirections = { extreme_heat: null, extreme_cold: null };
+var weatherWeights   = { extreme_heat: 0,    extreme_cold: 0    };
+
 // Standard factor weights
 var weights = {};
 HAZARDS.concat(COST).forEach(function(f){ weights[f.id] = 0; });
 
-// ── Stepper helpers ───────────────────────────────────────────────────────
-function makeStepper(id, colorClass, onchange) {
-  var pipColor = colorClass || 'blue';
-  var wrap = document.createElement('div');
-  wrap.innerHTML =
-    '<div class="stepper' + (colorClass ? ' '+colorClass : '') + '" id="stepper-'+id+'">' +
-      '<button class="stepper-btn" id="stepdown-'+id+'" disabled>&#8722;</button>' +
-      '<div class="stepper-val zero" id="stepval-'+id+'">0</div>' +
-      '<button class="stepper-btn" id="stepup-'+id+'">&#43;</button>' +
-    '</div>' +
-    '<div class="pip-track" id="pips-'+id+'">' +
-      Array(10).fill('<div class="pip"><div class="pip-fill '+pipColor+'" style="width:0%"></div></div>').join('') +
-    '</div>';
-
-  function getCurrentFromState() {
-    if (weights[id] !== undefined) return weights[id];
-    if (typeof weatherWeights !== 'undefined' && weatherWeights[id] !== undefined) return weatherWeights[id];
-    if (id === 'urban-group') return urbanWeight;
-    if (typeof politicsWeights !== 'undefined' && politicsWeights[id] !== undefined) return politicsWeights[id];
-    return 0;
-  }
-
-  function tryStep(delta) {
-    var cur = getCurrentFromState();
-    if (delta > 0) {
-      // Hard cap: total across all steppers must not exceed BUDGET
-      var total = getTotalAllocatedAll();
-      if (total >= BUDGET) return false;        // budget fully used — hard stop
-      onchange(Math.min(cur + 1, BUDGET));      // also never exceed BUDGET on one stepper
-    } else {
-      if (cur <= 0) return false;
-      onchange(Math.max(0, cur - 1));
-    }
-    return true;
-  }
-
-  function attachHold(btn, delta) {
-    var holdTimer = null, repeatTimer = null;
-    function stop() { clearTimeout(holdTimer); clearInterval(repeatTimer); holdTimer = null; repeatTimer = null; }
-    function start() {
-      if (!tryStep(delta)) return;
-      holdTimer = setTimeout(function() {
-        repeatTimer = setInterval(function() { if (!tryStep(delta)) stop(); }, 80);
-      }, 400);
-    }
-    btn.addEventListener('mousedown',  function(e){ e.preventDefault(); start(); });
-    btn.addEventListener('touchstart', function(e){ e.preventDefault(); start(); }, { passive: false });
-    document.addEventListener('mouseup',    stop);
-    document.addEventListener('touchend',   stop);
-    document.addEventListener('mouseleave', stop);
-  }
-
-  attachHold(wrap.querySelector('#stepup-'+id),   +1);
-  attachHold(wrap.querySelector('#stepdown-'+id), -1);
-  return wrap;
-}
-function updateStepper(id) {
-  var valEl = document.getElementById('stepval-'+id);
-  var downBtn = document.getElementById('stepdown-'+id);
-  var upBtn = document.getElementById('stepup-'+id);
-  if (!valEl) return;
-  // Read current value from state
-  var value = 0;
-  if (weights[id] !== undefined) value = weights[id];
-  else if (weatherWeights[id] !== undefined) value = weatherWeights[id];
-  else if (id === 'urban-group') value = urbanWeight;
-  else if (politicsWeights[id] !== undefined) value = politicsWeights[id];
-  valEl.textContent = value;
-  valEl.className = 'stepper-val' + (value === 0 ? ' zero' : '');
-  downBtn.disabled = (value === 0);
-  var avail = BUDGET - getTotalAllocated('__stepper_'+id+'__');
-  upBtn.disabled = (avail <= 0);
-  // Pip track: 10 segments x 10pts each, partial fill for fractional tens
-  var track = document.getElementById('pips-'+id);
-  if (track) {
-    track.querySelectorAll('.pip-fill').forEach(function(pip, i) {
-      pip.style.width = (Math.max(0, Math.min(10, value - i*10)) * 10) + '%';
-    });
-  }
-}
-
-// ── Build standard factor cards ───────────────────────────────────────────
-function buildStepperCard(container, factorList) {
+// ── Build hazard cards ────────────────────────────────────────────────────
+function buildSliderCard(container, factorList) {
   factorList.forEach(function(f) {
     var card = document.createElement('div');
     card.className = 'factor-card';
     card.id = 'card-' + f.id;
-    var header = document.createElement('div');
-    header.innerHTML = '<div class="factor-top"><div class="factor-name">'+f.label+'</div></div><div class="factor-desc">'+f.desc+'</div>';
-    card.appendChild(header);
-    card.appendChild(makeStepper(f.id, '', function(nv){ weights[f.id]=nv; updateAllUI(); }));
+    card.innerHTML =
+      '<div class="factor-top"><div class="factor-name">' + f.label + '</div></div>' +
+      '<div class="factor-desc">' + f.desc + '</div>' +
+      '<div class="stepper-wrap">' +
+        '<button class="stepper-btn" id="btn-minus-' + f.id + '">&#8722;</button>' +
+        '<div class="stepper-val zero" id="pts-' + f.id + '">0</div>' +
+        '<button class="stepper-btn" id="btn-plus-' + f.id + '">+</button>' +
+      '</div>' +
+      '<input type="range" min="0" max="100" value="0" id="slider-' + f.id + '" style="display:none" />';
     container.appendChild(card);
+    (function(fid) {
+      function setV(v) {
+        v = Math.max(0, Math.min(v, BUDGET - getTotalAllocated(fid)));
+        weights[fid] = v;
+        document.getElementById('slider-' + fid).value = v;
+        updateAllUI();
+      }
+      document.getElementById('btn-minus-' + fid).addEventListener('click', function() { setV(weights[fid]-1); });
+      document.getElementById('btn-plus-'  + fid).addEventListener('click', function() { setV(weights[fid]+1); });
+      document.getElementById('slider-'    + fid).addEventListener('input', function() { setV(parseInt(this.value)); });
+    })(f.id);
   });
 }
 
-buildStepperCard(document.getElementById('hazardGrid'), HAZARDS);
-buildStepperCard(document.getElementById('costGrid'), COST);
+buildSliderCard(document.getElementById('hazardGrid'), HAZARDS);
+buildSliderCard(document.getElementById('costGrid'), COST);
 
-// ── Weather cards ─────────────────────────────────────────────────────────
+// ── Weather cards ────────────────────────────────────────────────────────
 (function() {
   var grid = document.getElementById('weatherGrid');
-  WEATHER.forEach(function(w) {
+  var weatherVars = [
+    { id: 'extreme_heat', label: 'Extreme Heat',
+      desc: 'Maximum temperature. Choose whether more heat is desirable, then allocate points.',
+      optA: { val: 'better', text: 'More heat is better' },
+      optB: { val: 'worse',  text: 'Less heat is better' } },
+    { id: 'extreme_cold', label: 'Extreme Cold',
+      desc: 'Minimum temperature. Choose whether cold winters are desirable, then allocate points.',
+      optA: { val: 'better', text: 'I prefer cold winters' },
+      optB: { val: 'worse',  text: 'I prefer mild winters' } }
+  ];
+  weatherVars.forEach(function(wv) {
     var card = document.createElement('div');
-    card.className = 'weather-card';
-    card.id = 'card-' + w.id;
-    var header = document.createElement('div');
-    header.innerHTML =
-      '<div class="weather-top"><div class="weather-name">'+w.label+'</div></div>' +
-      '<div class="weather-desc">'+w.desc+'</div>' +
-      '<div class="weather-choices">' +
-        '<div class="weather-choice" id="wchoice-'+w.id+'-a" data-dir="'+w.choiceA.direction+'">'+w.choiceA.label+'</div>' +
-        '<div class="weather-choice" id="wchoice-'+w.id+'-b" data-dir="'+w.choiceB.direction+'">'+w.choiceB.label+'</div>' +
+    card.className = 'factor-card';
+    card.id = 'card-' + wv.id;
+    card.innerHTML =
+      '<div class="factor-top"><div class="factor-name">' + wv.label + '</div></div>' +
+      '<div class="factor-desc">' + wv.desc + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+        '<div class="urban-choice" id="wdir-' + wv.id + '-better" style="flex:1;font-size:12px;">' + wv.optA.text + '</div>' +
+        '<div class="urban-choice" id="wdir-' + wv.id + '-worse" style="flex:1;font-size:12px;">' + wv.optB.text + '</div>' +
+      '</div>' +
+      '<div id="wslider-wrap-' + wv.id + '" style="display:none;">' +
+        '<div class="stepper-wrap">' +
+          '<button class="stepper-btn" id="btn-minus-' + wv.id + '">&#8722;</button>' +
+          '<div class="stepper-val zero" id="pts-' + wv.id + '">0</div>' +
+          '<button class="stepper-btn" id="btn-plus-' + wv.id + '">+</button>' +
+        '</div>' +
+        '<input type="range" min="0" max="100" value="0" id="slider-' + wv.id + '" style="display:none" />' +
       '</div>';
-    card.appendChild(header);
-    var sw = document.createElement('div');
-    sw.className = 'weather-stepper-wrap'; sw.id = 'wstepper-wrap-'+w.id;
-    sw.appendChild(makeStepper(w.id, 'teal', (function(wid){ return function(nv){ weatherWeights[wid]=nv; updateAllUI(); }; })(w.id)));
-    card.appendChild(sw);
     grid.appendChild(card);
-    ['a','b'].forEach(function(k) {
-      document.getElementById('wchoice-'+w.id+'-'+k).addEventListener('click', function() {
-        weatherDirections[w.id] = parseInt(this.dataset.dir);
-        ['a','b'].forEach(function(j){ document.getElementById('wchoice-'+w.id+'-'+j).classList.toggle('selected', j===k); });
-        document.getElementById('wstepper-wrap-'+w.id).style.display = 'block';
+    ['better','worse'].forEach(function(val) {
+      document.getElementById('wdir-' + wv.id + '-' + val).addEventListener('click', function() {
+        weatherDirections[wv.id] = val;
+        ['better','worse'].forEach(function(v) {
+          document.getElementById('wdir-' + wv.id + '-' + v).classList.toggle('selected', v === val);
+        });
+        document.getElementById('wslider-wrap-' + wv.id).style.display = 'block';
         updateAllUI();
       });
     });
+    (function(id) {
+      function setW(v) {
+        v = Math.max(0, Math.min(v, BUDGET - getTotalAllocated('__weather_' + id + '__')));
+        weatherWeights[id] = v;
+        document.getElementById('slider-' + id).value = v;
+        updateAllUI();
+      }
+      document.getElementById('btn-minus-' + id).addEventListener('click', function() { setW(weatherWeights[id]-1); });
+      document.getElementById('btn-plus-'  + id).addEventListener('click', function() { setW(weatherWeights[id]+1); });
+      document.getElementById('slider-'    + id).addEventListener('input', function() { setW(parseInt(this.value)); });
+    })(wv.id);
   });
 })();
 
@@ -800,23 +561,32 @@ buildStepperCard(document.getElementById('costGrid'), COST);
         '</div>';
       }).join('') +
     '</div>' +
-    '<div id="urban-stepper-wrap" style="display:none"></div>';
-  var usw = document.createElement('div'); usw.id = 'urban-stepper-inner';
-  // We'll append the stepper after the card is in DOM
+    '<div id="urban-slider-wrap" style="display:none">' +
+      '<div class="stepper-wrap">' +
+        '<button class="stepper-btn" id="btn-minus-urban">&#8722;</button>' +
+        '<div class="stepper-val zero" id="pts-urban-group">0</div>' +
+        '<button class="stepper-btn" id="btn-plus-urban">+</button>' +
+      '</div>' +
+      '<input type="range" min="0" max="100" value="0" id="slider-urban-group" style="display:none" />' +
+    '</div>';
   grid.appendChild(card);
-  var ustepWrap = document.getElementById('urban-stepper-wrap');
-  ustepWrap.appendChild(makeStepper('urban-group', '', function(nv){ urbanWeight=nv; updateAllUI(); }));
 
+  // Choice buttons
   URBAN_OPTIONS.forEach(function(o) {
     document.getElementById('uchoice-' + o.id).addEventListener('click', function() {
       urbanChoice = o.id;
       URBAN_OPTIONS.forEach(function(x) {
         document.getElementById('uchoice-' + x.id).classList.toggle('selected', x.id === o.id);
       });
-      document.getElementById('urban-stepper-wrap').style.display = 'block';
+      document.getElementById('urban-slider-wrap').style.display = 'block';
       updateAllUI();
     });
   });
+
+  function setU(v){v=Math.max(0,Math.min(v,BUDGET-getTotalAllocated('__urban__')));urbanWeight=v;document.getElementById('slider-urban-group').value=v;updateAllUI();}
+  document.getElementById('slider-urban-group').addEventListener('input',function(){setU(parseInt(this.value));});
+  document.getElementById('btn-minus-urban').addEventListener('click',function(){setU(urbanWeight-1);});
+  document.getElementById('btn-plus-urban').addEventListener('click',function(){setU(urbanWeight+1);});
 })();
 
 // ── Politics card ─────────────────────────────────────────────────────────
@@ -835,23 +605,33 @@ buildStepperCard(document.getElementById('costGrid'), COST);
       '<div class="politics-choice" id="pchoice-conservative" data-id="conservative">More Conservative</div>' +
     '</div>' +
     '<div class="politics-sliders" id="politics-sliders-wrap">' +
-      '<div class="pol-slider-row" id="polrow-election_diff">' +
-        '<div class="pol-slider-label"><span class="pol-slider-name">County-level elections</span></div>' +
+      '<div class="pol-slider-row">' +
+        '<div class="pol-slider-label">' +
+          '<span class="pol-slider-name">County-level elections</span>' +
+          '<span class="pol-slider-pts" id="pts-election_diff">0</span>' +
+        '</div>' +
         '<div class="pol-slider-sub">How much do you prioritize the political lean of the specific county?</div>' +
+        '<div class="stepper-wrap">' +
+          '<button class="stepper-btn" id="btn-minus-election_diff">&#8722;</button>' +
+          '<div class="stepper-val zero" id="pts-election_diff">0</div>' +
+          '<button class="stepper-btn" id="btn-plus-election_diff">+</button>' +
+        '</div>' +
+        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-election_diff" style="display:none" />' +
       '</div>' +
-      '<div class="pol-slider-row" id="polrow-state_election_diff">' +
-        '<div class="pol-slider-label"><span class="pol-slider-name">State-level elections</span></div>' +
+      '<div class="pol-slider-row">' +
+        '<div class="pol-slider-label">' +
+          '<span class="pol-slider-name">State-level elections</span>' +
+        '</div>' +
         '<div class="pol-slider-sub">How much do you prioritize the political lean of the state overall?</div>' +
+        '<div class="stepper-wrap">' +
+          '<button class="stepper-btn" id="btn-minus-state_election_diff">&#8722;</button>' +
+          '<div class="stepper-val zero" id="pts-state_election_diff">0</div>' +
+          '<button class="stepper-btn" id="btn-plus-state_election_diff">+</button>' +
+        '</div>' +
+        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-state_election_diff" style="display:none" />' +
       '</div>' +
     '</div>';
   grid.appendChild(card);
-
-  // Append steppers into each row after card is in DOM
-  ['election_diff','state_election_diff'].forEach(function(id) {
-    document.getElementById('polrow-'+id).appendChild(
-      makeStepper(id, 'purple', (function(pid){ return function(nv){ politicsWeights[pid]=nv; updateAllUI(); }; })(id))
-    );
-  });
 
   ['liberal','conservative'].forEach(function(id) {
     document.getElementById('pchoice-' + id).addEventListener('click', function() {
@@ -863,32 +643,52 @@ buildStepperCard(document.getElementById('costGrid'), COST);
       updateAllUI();
     });
   });
+
+  ['election_diff','state_election_diff'].forEach(function(id){
+    (function(pid){
+      function setP(v){v=Math.max(0,Math.min(v,BUDGET-getTotalAllocated('__pol_'+pid+'__')));politicsWeights[pid]=v;document.getElementById('slider-'+pid).value=v;updateAllUI();}
+      document.getElementById('slider-'+pid).addEventListener('input',function(){setP(parseInt(this.value));});
+      document.getElementById('btn-minus-'+pid).addEventListener('click',function(){setP(politicsWeights[pid]-1);});
+      document.getElementById('btn-plus-'+pid).addEventListener('click',function(){setP(politicsWeights[pid]+1);});
+    })(id);
+  });
 })();
 
 // ── Budget helpers ────────────────────────────────────────────────────────
+// Returns total allocated EXCLUDING the given id (pass special token for group items)
 function getTotalAllocated(excludeId) {
   var total = 0;
   HAZARDS.concat(COST).forEach(function(f) {
-    if ('__stepper_'+f.id+'__' !== excludeId) total += weights[f.id];
+    if (f.id !== excludeId) total += weights[f.id];
   });
-  WEATHER.forEach(function(w) {
-    if ('__stepper_'+w.id+'__' !== excludeId) total += weatherWeights[w.id];
-  });
-  if (excludeId !== '__stepper_urban-group__') total += urbanWeight;
-  if (excludeId !== '__stepper_election_diff__') total += politicsWeights.election_diff;
-  if (excludeId !== '__stepper_state_election_diff__') total += politicsWeights.state_election_diff;
+  if (excludeId !== '__urban__') total += urbanWeight;
+  if (excludeId !== '__pol_election_diff__') total += politicsWeights.election_diff;
+  if (excludeId !== '__pol_state_election_diff__') total += politicsWeights.state_election_diff;
+  if (excludeId !== '__weather_extreme_heat__') total += weatherWeights.extreme_heat;
+  if (excludeId !== '__weather_extreme_cold__') total += weatherWeights.extreme_cold;
   return total;
 }
 
 function getTotalAllocatedAll() {
   var total = 0;
   HAZARDS.concat(COST).forEach(function(f){ total += weights[f.id]; });
-  WEATHER.forEach(function(w){ total += weatherWeights[w.id]; });
-  total += urbanWeight + politicsWeights.election_diff + politicsWeights.state_election_diff;
+  total += urbanWeight;
+  total += politicsWeights.election_diff + politicsWeights.state_election_diff;
+  total += weatherWeights.extreme_heat + weatherWeights.extreme_cold;
   return total;
 }
 
 // ── Update all UI ─────────────────────────────────────────────────────────
+function updateSliderFill(slider, value) {
+  var pct = value;
+  slider.style.background = 'linear-gradient(to right, #2980b9 0%, #2980b9 ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
+}
+
+function updateSliderFillPurple(slider, value) {
+  var pct = value;
+  slider.style.background = 'linear-gradient(to right, #8e44ad 0%, #8e44ad ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
+}
+
 function updateAllUI() {
   var allocated = getTotalAllocatedAll();
   var remaining = BUDGET - allocated;
@@ -896,146 +696,65 @@ function updateAllUI() {
   // Budget bar
   var bd = document.getElementById('budgetDisplay');
   var bf = document.getElementById('budgetFill');
-  var isOver = remaining < 0;
   bd.textContent = remaining;
-  bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : isOver ? ' over' : '');
-  bf.style.width = Math.max(0, remaining) + '%';
-  bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : isOver ? ' over' : '');
-  var barWrap = document.querySelector('.budget-bar-wrap');
-  if (barWrap) barWrap.classList.toggle('over', isOver);
-  var subtext = document.getElementById('budgetSubtext');
-  subtext.className = 'budget-subtext' + (isOver ? ' over' : '');
-  subtext.textContent = isOver
-    ? '⚠ Over budget by ' + Math.abs(remaining) + ' point' + (Math.abs(remaining) !== 1 ? 's' : '') + ' — reduce some categories to continue.'
-    : remaining === 0
-      ? 'All points allocated. You can proceed.'
-      : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 100 to continue.';
+  bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : '');
+  bf.style.width = (remaining / BUDGET * 100) + '%';
+  bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : '');
+  document.getElementById('budgetSubtext').textContent = remaining === 0
+    ? 'All points allocated. You can proceed.'
+    : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 100 to continue.';
   document.getElementById('footerHint').textContent = allocated + ' of 100 points allocated';
 
   // Proceed: all 100 spent AND urbanization choice made AND politics alignment chosen (if any points assigned)
-  // Stepper states
-  HAZARDS.concat(COST).forEach(function(f) {
-    updateStepper(f.id);
-    document.getElementById('card-'+f.id).className = 'factor-card'+(weights[f.id]>0?' has-points':'');
-  });
-  WEATHER.forEach(function(w) {
-    updateStepper(w.id);
-    document.getElementById('card-'+w.id).className = 'weather-card'+(weatherWeights[w.id]>0?' has-points':'');
-  });
-  updateStepper('urban-group');
-  document.getElementById('card-urban-group').className = 'urban-card'+(urbanWeight>0?' has-points':'');
-  ['election_diff','state_election_diff'].forEach(function(id){ updateStepper(id); });
-  var polTotal = politicsWeights.election_diff + politicsWeights.state_election_diff;
-  document.getElementById('card-politics-group').className = 'politics-card'+(polTotal>0?' has-points':'');
-
-  // Proceed button
   var urbanOk = urbanWeight === 0 || urbanChoice !== null;
-  var politicsOk = (politicsWeights.election_diff===0 && politicsWeights.state_election_diff===0) || politicsAlignment!==null;
-  var weatherOk = WEATHER.every(function(w){ return weatherWeights[w.id]===0 || weatherDirections[w.id]!==null; });
-  document.getElementById('proceedBtn').disabled = (remaining!==0 || !urbanOk || !politicsOk || !weatherOk);
+  var politicsOk = (politicsWeights.election_diff === 0 && politicsWeights.state_election_diff === 0) || politicsAlignment !== null;
+  var weatherOk = (weatherWeights.extreme_heat === 0 || weatherDirections.extreme_heat !== null) &&
+                  (weatherWeights.extreme_cold === 0 || weatherDirections.extreme_cold !== null);
+  document.getElementById('proceedBtn').disabled = (remaining !== 0 || !urbanOk || !politicsOk || !weatherOk);
+
+  // Standard factor cards
+  HAZARDS.concat(COST).forEach(function(f) {
+    var v = weights[f.id];
+    var el = document.getElementById('pts-' + f.id);
+    el.textContent = v; el.className = 'stepper-val'+(v===0?' zero':'');
+    document.getElementById('card-' + f.id).className = 'factor-card'+(v>0?' has-points':'');
+    var rem = BUDGET-getTotalAllocated(f.id);
+    var pb = document.getElementById('btn-plus-'+f.id); var mb = document.getElementById('btn-minus-'+f.id);
+    if(pb) pb.disabled=(rem<=0); if(mb) mb.disabled=(v<=0);
+  });
+
+  // Urban group
+  var uv=urbanWeight; var uel=document.getElementById('pts-urban-group');
+  uel.textContent=uv; uel.className='stepper-val'+(uv===0?' zero':'');
+  document.getElementById('card-urban-group').className='urban-card'+(uv>0?' has-points':'');
+  var ur=BUDGET-getTotalAllocated('__urban__');
+  var upb=document.getElementById('btn-plus-urban'); var umb=document.getElementById('btn-minus-urban');
+  if(upb)upb.disabled=(ur<=0); if(umb)umb.disabled=(uv<=0);
+
+  // Politics steppers
+  ['election_diff','state_election_diff'].forEach(function(id){
+    var v=politicsWeights[id]; var el=document.getElementById('pts-'+id);
+    el.textContent=v; el.className='stepper-val'+(v===0?' zero':'');
+    var rem=BUDGET-getTotalAllocated('__pol_'+id+'__');
+    var pb=document.getElementById('btn-plus-'+id); var mb=document.getElementById('btn-minus-'+id);
+    if(pb)pb.disabled=(rem<=0); if(mb)mb.disabled=(v<=0);
+  });
+  // Weather steppers
+  ['extreme_heat','extreme_cold'].forEach(function(id){
+    var v=weatherWeights[id]; var el=document.getElementById('pts-'+id);
+    if(!el)return; el.textContent=v; el.className='stepper-val'+(v===0?' zero':'');
+    document.getElementById('card-'+id).className='factor-card'+(v>0?' has-points':'');
+    var rem=BUDGET-getTotalAllocated('__weather_'+id+'__');
+    var pb=document.getElementById('btn-plus-'+id); var mb=document.getElementById('btn-minus-'+id);
+    if(pb)pb.disabled=(rem<=0); if(mb)mb.disabled=(v<=0);
+  });
+  var polTotal=politicsWeights.election_diff+politicsWeights.state_election_diff;
+  document.getElementById('card-politics-group').className='politics-card'+(polTotal>0?' has-points':'');
 }
 
 updateAllUI();
 
 // ── Map ───────────────────────────────────────────────────────────────────
-
-// ── State boundary + label overlay ───────────────────────────────────────
-var statesGeoJSON = null;
-
-var FIPS_NAMES = {
-  '01':'Alabama','02':'Alaska','04':'Arizona','05':'Arkansas','06':'California',
-  '08':'Colorado','09':'Connecticut','10':'Delaware','11':'District of Columbia',
-  '12':'Florida','13':'Georgia','15':'Hawaii','16':'Idaho','17':'Illinois',
-  '18':'Indiana','19':'Iowa','20':'Kansas','21':'Kentucky','22':'Louisiana',
-  '23':'Maine','24':'Maryland','25':'Massachusetts','26':'Michigan',
-  '27':'Minnesota','28':'Mississippi','29':'Missouri','30':'Montana',
-  '31':'Nebraska','32':'Nevada','33':'New Hampshire','34':'New Jersey',
-  '35':'New Mexico','36':'New York','37':'North Carolina','38':'North Dakota',
-  '39':'Ohio','40':'Oklahoma','41':'Oregon','42':'Pennsylvania',
-  '44':'Rhode Island','45':'South Carolina','46':'South Dakota',
-  '47':'Tennessee','48':'Texas','49':'Utah','50':'Vermont','51':'Virginia',
-  '53':'Washington','54':'West Virginia','55':'Wisconsin','56':'Wyoming'
-};
-var STATE_ABBR = {
-  'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
-  'Colorado':'CO','Connecticut':'CT','Delaware':'DE','District of Columbia':'DC',
-  'Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL',
-  'Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA',
-  'Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI',
-  'Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT',
-  'Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ',
-  'New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND',
-  'Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA',
-  'Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD',
-  'Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA',
-  'Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY'
-};
-var CENTROID_OVERRIDE = {
-  'Michigan':  [44.5, -84.5], 'Hawaii':   [20.5,-156.5],
-  'Alaska':    [64.2,-153.0], 'Louisiana':[31.2, -91.8],
-  'Maryland':  [39.0, -76.6], 'Delaware': [39.0, -75.5],
-  'Florida':   [28.5, -82.5]
-};
-
-function getStateCentroid(feature) {
-  var name = feature.properties.name || '';
-  if (CENTROID_OVERRIDE[name]) {
-    var o = CENTROID_OVERRIDE[name]; return L.latLng(o[0], o[1]);
-  }
-  var geom = feature.geometry;
-  var rings = geom.type === 'Polygon' ? [geom.coordinates[0]]
-    : geom.coordinates.map(function(p){ return p[0]; });
-  var ring = rings.reduce(function(a,b){ return b.length > a.length ? b : a; });
-  var lats = ring.map(function(c){ return c[1]; });
-  var lngs = ring.map(function(c){ return c[0]; });
-  return L.latLng(
-    (Math.min.apply(null,lats)+Math.max.apply(null,lats))/2,
-    (Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2
-  );
-}
-
-function addStateOverlay(targetMap) {
-  function render(geo) {
-    var pname = 'statesPane_'+L.stamp(targetMap);
-    if (!targetMap.getPane(pname)) {
-      targetMap.createPane(pname);
-      targetMap.getPane(pname).style.zIndex = 450;
-      targetMap.getPane(pname).style.pointerEvents = 'none';
-    }
-    // White boundary line
-    L.geoJSON(geo, {
-      pane: pname,
-      style: { color:'rgba(255,255,255,0.9)', weight:1.8, fill:false, interactive:false }
-    }).addTo(targetMap);
-    // Thin dark inner stroke for definition on light areas
-    L.geoJSON(geo, {
-      pane: pname,
-      style: { color:'rgba(60,60,60,0.22)', weight:0.6, fill:false, interactive:false }
-    }).addTo(targetMap);
-    // Abbreviation labels
-    geo.features.forEach(function(f) {
-      var abbr = STATE_ABBR[f.properties.name||''];
-      if (!abbr) return;
-      L.marker(getStateCentroid(f), {
-        pane: pname, interactive: false,
-        icon: L.divIcon({ className:'state-label', html:abbr, iconSize:[24,12], iconAnchor:[12,6] })
-      }).addTo(targetMap);
-    });
-  }
-  if (statesGeoJSON) { render(statesGeoJSON); return; }
-  fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json')
-    .then(function(r){ return r.json(); })
-    .then(function(topo) {
-      var geo = topojson.feature(topo, topo.objects.states);
-      geo.features.forEach(function(f){
-        f.properties.name = FIPS_NAMES[String(f.id).padStart(2,'0')] || '';
-      });
-      statesGeoJSON = geo;
-      render(statesGeoJSON);
-    })
-    .catch(function(e){ console.warn('State overlay failed:', e); });
-}
-
 var map = null, gridLayer = null, geojsonData = null;
 
 function initMap() {
@@ -1046,10 +765,10 @@ function initMap() {
   }).addTo(map);
 }
 
-// Simulated grid — replace with: fetch('grid.geojson').then(r=>r.json()).then(d=>{geojsonData=d;renderMap();})
 fetch('grid.geojson')
   .then(function(r) { return r.json(); })
-  .then(function(d) { geojsonData = d; renderMap(); });
+  .then(function(d) { geojsonData = d; })
+  .catch(function(e) { console.error('Failed to load grid.geojson:', e); });
 
 var COLOR_STOPS = [
   [0.000,'#d73027'],[0.125,'#f46d43'],[0.250,'#fdae61'],[0.375,'#fee090'],
@@ -1081,15 +800,6 @@ function computeComposite(props) {
     total += w * oriented; wsum += w;
   });
 
-  // Weather: direction chosen by respondent
-  WEATHER.forEach(function(wf) {
-    var w = weatherWeights[wf.id] / 100.0;
-    if (w === 0) return;
-    var raw = props[wf.id] !== undefined ? props[wf.id] : 0.5;
-    var oriented = weatherDirections[wf.id] === 1 ? raw : (1 - raw);
-    total += w * oriented; wsum += w;
-  });
-
   // Urbanization: only the chosen variable
   if (urbanWeight > 0 && urbanChoice) {
     var w = urbanWeight / 100.0;
@@ -1106,67 +816,56 @@ function computeComposite(props) {
     total += w * oriented; wsum += w;
   });
 
+  ['extreme_heat','extreme_cold'].forEach(function(id) {
+    var w = weatherWeights[id]/100.0;
+    if (w===0||!weatherDirections[id]) return;
+    var raw = props[id]!==undefined?props[id]:0.5;
+    var oriented = weatherDirections[id]==='worse'?(1-raw):raw;
+    total+=w*oriented; wsum+=w;
+  });
   return wsum > 0 ? total / wsum : 0.5;
 }
 
 function renderMap() {
   initMap();
-  if (!geojsonData) geojsonData = generateSimulatedGrid();
   if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
 
   var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
   var minS = Math.min.apply(null, scores), maxS = Math.max.apply(null, scores);
 
-  // Single shared tooltip on the map — avoids per-layer tooltip pile-up on drag
-  var sharedTip = L.tooltip({ className: 'cell-tooltip', sticky: false, permanent: false, offset: [12, 0] });
-  var mapDragging = false;
-  map.on('dragstart', function() { mapDragging = true; sharedTip.remove(); });
-  map.on('dragend',   function() { mapDragging = false; });
-
-  function buildTipContent(props, comp) {
-    var contribs = [];
-    HAZARDS.concat(COST).forEach(function(f) {
-      if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
-    });
-    WEATHER.forEach(function(wf) {
-      if (weatherWeights[wf.id] > 0) contribs.push({ label: wf.label, w: weatherWeights[wf.id], val: props[wf.id] });
-    });
-    if (urbanWeight > 0 && urbanChoice) {
-      contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
-    }
-    ['election_diff','state_election_diff'].forEach(function(id) {
-      if (politicsWeights[id] > 0) {
-        contribs.push({ label: id === 'election_diff' ? 'County elections' : 'State elections', w: politicsWeights[id], val: props[id] });
-      }
-    });
-    contribs.sort(function(a,b){ return b.w-a.w; });
-    var rows = contribs.slice(0,3).map(function(c){
-      return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
-    }).join('');
-    return '<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows;
-  }
-
   gridLayer = L.geoJSON(geojsonData, {
     style: function(feature) {
       var raw = computeComposite(feature.properties);
-      var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
-      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
+      return { fillColor: raw >= 0.5 ? '#2ecc71' : '#e74c3c', fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
     },
     onEachFeature: function(feature, layer) {
       layer.on('mouseover', function(e) {
-        if (mapDragging) return;
-        var comp = computeComposite(feature.properties);
-        sharedTip.setContent(buildTipContent(feature.properties, comp));
-        sharedTip.setLatLng(e.latlng);
-        sharedTip.addTo(map);
+        var props = feature.properties;
+        var comp = computeComposite(props);
+        var t = maxS > minS ? (comp - minS) / (maxS - minS) : 0.5;
+        // Top contributing vars for tooltip
+        var contribs = [];
+        HAZARDS.concat(COST).forEach(function(f) {
+          if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
+        });
+        if (urbanWeight > 0 && urbanChoice) {
+          contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
+        }
+        ['election_diff','state_election_diff'].forEach(function(id) {
+          if (politicsWeights[id] > 0) {
+            contribs.push({ label: id === 'election_diff' ? 'County elections' : 'State elections', w: politicsWeights[id], val: props[id] });
+          }
+        });
+        contribs.sort(function(a,b){ return b.w-a.w; });
+        var rows = contribs.slice(0,3).map(function(c){
+          return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
+        }).join('');
+        layer.bindTooltip('<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows,
+          { className: 'cell-tooltip', sticky: true }).openTooltip(e.latlng);
         layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
       });
-      layer.on('mousemove', function(e) {
-        if (mapDragging) return;
-        sharedTip.setLatLng(e.latlng);
-      });
       layer.on('mouseout', function() {
-        sharedTip.remove();
+        layer.closeTooltip();
         var raw = computeComposite(feature.properties);
         var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
         layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
@@ -1177,12 +876,11 @@ function renderMap() {
   // Weights summary panel
   var rows = [];
   HAZARDS.concat(COST).forEach(function(f){ if (weights[f.id]>0) rows.push({label:f.label, w:weights[f.id]}); });
-  WEATHER.forEach(function(wf){
-    if (weatherWeights[wf.id]>0) rows.push({label:wf.label+(weatherDirections[wf.id]===1?' ↑':' ↓'), w:weatherWeights[wf.id]});
-  });
   if (urbanWeight > 0 && urbanChoice) rows.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight });
   if (politicsWeights.election_diff > 0) rows.push({ label: 'County elections', w: politicsWeights.election_diff });
   if (politicsWeights.state_election_diff > 0) rows.push({ label: 'State elections', w: politicsWeights.state_election_diff });
+  if (weatherWeights.extreme_heat>0) rows.push({label:'Extreme heat',w:weatherWeights.extreme_heat});
+  if (weatherWeights.extreme_cold>0) rows.push({label:'Extreme cold',w:weatherWeights.extreme_cold});
   rows.sort(function(a,b){ return b.w-a.w; });
   var align = politicsAlignment ? ' <span style="font-size:10px;color:#8e44ad;font-weight:600">('+politicsAlignment+')</span>' : '';
   document.getElementById('weightsSummary').innerHTML =
@@ -1193,341 +891,51 @@ function renderMap() {
     }).join('') + align;
 
   setTimeout(function(){ map.invalidateSize(); }, 50);
-  addStateOverlay(map);
 }
 
-// ── Navigation ────────────────────────────────────────────────────────────
-document.getElementById('proceedBtn').addEventListener('click', function() {
-  document.getElementById('screen1').classList.remove('active');
-  document.getElementById('screen2').classList.add('active');
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      renderMap();
-      setTimeout(function() { if (map) map.invalidateSize({animate:false}); }, 150);
-      setTimeout(function() { if (map) map.invalidateSize({animate:false}); }, 600);
-    });
-  });
-  if (window.ResizeObserver && !window._mapResizeObserver) {
-    window._mapResizeObserver = new ResizeObserver(function() { if (map) map.invalidateSize({animate:false}); });
-    window._mapResizeObserver.observe(document.getElementById('map'));
-  }
-});
-document.getElementById('backBtn').addEventListener('click', function() {
-  document.getElementById('screen2').classList.remove('active');
-  document.getElementById('screen1').classList.add('active');
-});
 
-// ── Submit ────────────────────────────────────────────────────────────────
-document.getElementById('submitBtn').addEventListener('click', function() {
-  var weightVector = {};
-  HAZARDS.concat(COST).forEach(function(f){ weightVector[f.id] = weights[f.id]; });
-  // Urban: only chosen variable gets weight
-  URBAN_OPTIONS.forEach(function(o){ weightVector[o.id] = (o.id === urbanChoice ? urbanWeight : 0); });
-  weightVector.election_diff = politicsWeights.election_diff;
-  weightVector.state_election_diff = politicsWeights.state_election_diff;
-
-  var payload = {
-    weights: weightVector,
-    urban_preference: urbanChoice,
-    political_alignment: politicsAlignment,
-    cell_scores: (function(){
-      var out = [];
-      if (gridLayerEdit) {
-        gridLayerEdit.eachLayer(function(l) {
-          var s = l._paintScore !== undefined ? l._paintScore : computeComposite(l.feature.properties);
-          out.push({ cell_id: l.feature.properties.cell_id, composite_score: parseFloat(s.toFixed(4)), manually_edited: editedCells[l._leaflet_id] ? true : false });
-        });
-      } else if (geojsonData) {
-        geojsonData.features.forEach(function(feat){
-          out.push({ cell_id: feat.properties.cell_id, composite_score: parseFloat(computeComposite(feat.properties).toFixed(4)), manually_edited: false });
-        });
-      }
-      return out;
-    })()
-  };
-
-  if (isEmbedded) {
-    window.parent.postMessage({ type: 'priorityMapData', data: payload, dataString: JSON.stringify(payload), autoAdvance: true }, '*');
-    document.getElementById('successMsg').classList.add('show');
-    this.disabled = true; this.textContent = 'Submitted ✓'; this.style.background = '#95a5a6';
-  } else {
-    console.log('Payload:', JSON.stringify(payload, null, 2));
-    alert('Submitted! Weights and ' + payload.cell_scores.length + ' cell scores logged to console.');
-  }
-});
-
-// ── Paint / Edit screen variables ─────────────────────────────────────────
-var mapEdit = null, gridLayerEdit = null;
-var paintActive = false, isPainting = false, paintMode = 'raise';
-var brushRadiusKm = 100, lastPaintLatLng = null, paintInterval = null;
-var paintedThisStroke = {}, editedCells = {}, undoStack = [];
-var paintMinS = 0, paintMaxS = 1, paintReady = false;
-
-function paintCellColor(score) {
-  var t = (paintMaxS > paintMinS) ? (score - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-  t = Math.max(0, Math.min(1, t));
-  return interpolateColor(t);
-}
-
-var _recolorPending = false, _recolorQueue = null;
-function recolorLayers(layers) {
-  var gl = gridLayerEdit;
-  if (!gl) return;
-  // Merge into queue
-  if (layers) {
-    if (!_recolorQueue) _recolorQueue = [];
-    layers.forEach(function(l){ _recolorQueue.push(l); });
-  } else {
-    _recolorQueue = null; // null = all layers
-  }
-  if (_recolorPending) return; // already scheduled
-  _recolorPending = true;
-  requestAnimationFrame(function() {
-    _recolorPending = false;
-    var fn = function(l) {
-      var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
-      l.setStyle({ fillColor: paintCellColor(s) });
-    };
-    if (_recolorQueue) { _recolorQueue.forEach(fn); } else { gl.eachLayer(fn); }
-    _recolorQueue = null;
-  });
-}
-
-function cellsInBrush(latlng) {
-  var R = 6371, hits = [];
-  if (!gridLayerEdit) return hits;
-  gridLayerEdit.eachLayer(function(l) {
-    var c = l.getBounds().getCenter();
-    var dLat = (c.lat - latlng.lat) * Math.PI / 180;
-    var dLng = (c.lng - latlng.lng) * Math.PI / 180;
-    var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-    if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) <= brushRadiusKm) hits.push(l);
-  });
-  return hits;
-}
-
-var paintDelta = 0.02; // set to 0.005 on touch devices
-function nudgeTick() {
-  if (!isPainting || !lastPaintLatLng) return;
-  var layers = cellsInBrush(lastPaintLatLng);
-  var changed = [];
-  layers.forEach(function(l) {
-    var cur = l._paintScore;
-    var next = paintMode === 'raise' ? Math.min(1, cur + paintDelta) : Math.max(0, cur - paintDelta);
-    if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
-  });
-  if (changed.length) recolorLayers(changed);
-}
-
-function stopPainting() {
-  if (isPainting) { isPainting = false; clearTimeout(paintInterval); clearInterval(paintInterval); paintInterval = null; paintedThisStroke = {}; }
-}
-
-function renderEditMap() {
-  paintReady = false;
-  if (mapEdit) { mapEdit.remove(); mapEdit = null; }
-  gridLayerEdit = null; editedCells = {}; undoStack = [];
-
-  mapEdit = L.map('mapEdit', { zoomControl: true }).setView([39.5, -98.35], 4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
-  }).addTo(mapEdit);
-
-  var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
-  paintMinS = Math.min.apply(null, scores);
-  paintMaxS = Math.max.apply(null, scores);
-
-  gridLayerEdit = L.geoJSON(geojsonData, {
-    style: function(feature) {
-      var raw = computeComposite(feature.properties);
-      var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5, stroke: true };
-    },
-    onEachFeature: function(feature, layer) {
-      layer.on('mouseout', function() {
-        layer.closeTooltip();
-        if (paintReady && editedCells[layer._leaflet_id]) {
-          layer.setStyle({ fillColor: paintCellColor(layer._paintScore), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-        } else {
-          var raw = computeComposite(feature.properties);
-          var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-          layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
-        }
-      });
-      layer.on('mousedown', function(e) {
-        if (!paintActive) return;
-        L.DomEvent.stopPropagation(e);
-        if (!isPainting) {
-          isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
-          var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-          undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-          document.getElementById('paintUndoBtn').disabled = false;
-          paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
-        }
-      });
-      layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
-      layer.on('mouseup', stopPainting);
-    }
-  }).addTo(mapEdit);
-  addStateOverlay(mapEdit);
-
-  gridLayerEdit.eachLayer(function(l) {
-    l._paintScore = computeComposite(l.feature.properties);
-    l._baseScore = l._paintScore;
-  });
-
-  mapEdit.on('mousedown', function(e) {
-    if (!paintActive) return;
-    L.DomEvent.stopPropagation(e);
-    isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
-    var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-    undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-    document.getElementById('paintUndoBtn').disabled = false;
-    paintDelta = 0.02; nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
-  });
-  mapEdit.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
-  mapEdit.on('mouseup', stopPainting);
-  document.addEventListener('mouseup', stopPainting);
-
-  // Touch paint — slower interval, no initial tick, so brief taps don't over-paint
-  (function() {
-    var el = document.getElementById('mapEdit');
-    var touchMoved = false;
-    function ptToLatLng(touch) {
-      var r = el.getBoundingClientRect();
-      return mapEdit.containerPointToLatLng(L.point(touch.clientX - r.left, touch.clientY - r.top));
-    }
-    el.addEventListener('touchstart', function(e) {
-      if (!paintActive) return;
-      e.preventDefault();
-      paintDelta = 0.005; // gentle delta for touch (4x smaller than mouse)
-      touchMoved = false;
-      isPainting = true; paintedThisStroke = {}; lastPaintLatLng = ptToLatLng(e.touches[0]);
-      var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-      undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-      document.getElementById('paintUndoBtn').disabled = false;
-      // Only paint while actively dragging — brief taps do nothing
-      paintInterval = setInterval(function() {
-        if (touchMoved) nudgeTick();
-      }, 120);
-    }, { passive: false });
-    el.addEventListener('touchmove', function(e) {
-      if (!paintActive || !isPainting) return;
-      e.preventDefault();
-      touchMoved = true;
-      lastPaintLatLng = ptToLatLng(e.touches[0]);
-    }, { passive: false });
-    el.addEventListener('touchend', function() {
-      touchMoved = false;
-      stopPainting();
-    }, { passive: true });
-  })();
-
-  // Weights summary
-  var rows = [];
-  HAZARDS.concat(COST).forEach(function(f){ if (weights[f.id] > 0) rows.push({label:f.label, w:weights[f.id]}); });
-  if (urbanWeight > 0 && urbanChoice) rows.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight });
-  document.getElementById('weightsSummaryEdit').innerHTML =
-    '<div class="weights-title">Your Weights</div>' +
-    rows.map(function(r){ return '<div class="weight-row"><span class="weight-name">'+r.label+'</span><span class="weight-val">'+r.w+'</span></div>'; }).join('');
-
-  paintReady = true;
-  document.getElementById('paintUndoBtn').disabled = true;
-}
-
-// ── Screen 3 navigation ────────────────────────────────────────────────────
-document.getElementById('goToEditBtn').addEventListener('click', function() {
-  document.getElementById('screen2').classList.remove('active');
-  document.getElementById('screen3').classList.add('active');
-  document.getElementById('editInstructions').style.display = 'flex';
-  document.getElementById('paintToolbar').classList.remove('visible');
-  paintActive = false;
-  setTimeout(function() { renderEditMap(); }, 50);
-});
-
-document.getElementById('backToMapBtn').addEventListener('click', function() {
-  stopPainting(); paintActive = false;
-  document.getElementById('mapEdit').classList.remove('paint-mode');
-  document.getElementById('mapEdit').classList.remove('pan-mode');
-  document.getElementById('screen3').classList.remove('active');
-  document.getElementById('screen2').classList.add('active');
-  requestAnimationFrame(function() { if (map) map.invalidateSize({animate:false}); });
-});
-
-document.getElementById('startEditingBtn').addEventListener('click', function() {
-  document.getElementById('editInstructions').style.display = 'none';
-  document.getElementById('paintToolbar').classList.add('visible');
-  // Start in paint mode
-  setPaintMode(true);
-});
-
-function setPaintMode(painting) {
-  paintActive = painting;
-  var mapEl = document.getElementById('mapEdit');
-  if (painting) {
-    mapEl.classList.add('paint-mode');
-    mapEl.classList.remove('pan-mode');
-    document.getElementById('paintModeBtn').classList.add('active');
-    document.getElementById('panModeBtn').classList.remove('active');
-    document.getElementById('paintControls').classList.remove('paint-controls-disabled');
-    if (mapEdit) {
-      mapEdit.dragging.disable();
-      mapEdit.scrollWheelZoom.disable();
-      mapEdit.doubleClickZoom.disable();
-      if (mapEdit.tap) mapEdit.tap.disable();
-      if (mapEdit.touchZoom) mapEdit.touchZoom.disable();
-    }
-  } else {
-    stopPainting();
-    mapEl.classList.remove('paint-mode');
-    mapEl.classList.add('pan-mode');
-    document.getElementById('panModeBtn').classList.add('active');
-    document.getElementById('paintModeBtn').classList.remove('active');
-    document.getElementById('paintControls').classList.add('paint-controls-disabled');
-    if (mapEdit) {
-      mapEdit.dragging.enable();
-      mapEdit.scrollWheelZoom.enable();
-      mapEdit.doubleClickZoom.enable();
-      if (mapEdit.tap) mapEdit.tap.enable();
-      if (mapEdit.touchZoom) mapEdit.touchZoom.enable();
-    }
-  }
-}
-
-document.getElementById('panModeBtn').addEventListener('click', function() { setPaintMode(false); });
-document.getElementById('paintModeBtn').addEventListener('click', function() { setPaintMode(true); });
-document.getElementById('paintRaiseBtn').addEventListener('click', function() {
-  paintMode = 'raise';
-  this.classList.add('active');
-  document.getElementById('paintLowerBtn').classList.remove('active');
-});
-document.getElementById('paintLowerBtn').addEventListener('click', function() {
-  paintMode = 'lower';
-  this.classList.add('active');
-  document.getElementById('paintRaiseBtn').classList.remove('active');
-});
-document.getElementById('brushSizeSlider').addEventListener('input', function() {
-  brushRadiusKm = parseInt(this.value);
-  var px = 10 + (brushRadiusKm / 300) * 28;
-  document.getElementById('brushPreview').style.width = px + 'px';
-  document.getElementById('brushPreview').style.height = px + 'px';
-});
-document.getElementById('paintUndoBtn').addEventListener('click', function() {
-  if (!undoStack.length) return;
-  var snap = undoStack.pop();
-  gridLayerEdit.eachLayer(function(l) { if (snap[l._leaflet_id] !== undefined) l._paintScore = snap[l._leaflet_id]; });
-  editedCells = {};
-  gridLayerEdit.eachLayer(function(l) { if (l._paintScore !== l._baseScore) editedCells[l._leaflet_id] = true; });
-  this.disabled = undoStack.length === 0;
-  recolorLayers(null);
-});
-document.getElementById('paintResetBtn').addEventListener('click', function() {
-  var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
-  undoStack.push(snap);
-  document.getElementById('paintUndoBtn').disabled = false;
-  gridLayerEdit.eachLayer(function(l) { l._paintScore = l._baseScore; });
-  editedCells = {}; recolorLayers(null);
-});
 </script>
+
+<div class="modal-overlay" id="mapIntroModal">
+  <div class="modal-box">
+    <h2>Your Priority Map</h2>
+    <p>The map colors each area based on how well it matches your priorities. Higher-scoring areas appear in <strong>green</strong> (suitable); lower-scoring areas in <strong>red</strong> (not suitable).</p>
+    <p>Use <strong>&ldquo;&#8592; Adjust Priorities&rdquo;</strong> to go back and revise your point allocations at any time &mdash; the map will update automatically.</p>
+    <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to flip individual areas between suitable and not suitable directly on the map.</p>
+    <button class="btn btn-primary" id="modalOkBtn">View My Map &rarr;</button>
+  </div>
+</div>
+
+<!-- SCREEN 3 -->
+<div class="screen" id="screen3">
+  <div class="header">
+    <button class="btn btn-primary" id="backToMapBtn" style="padding:8px 18px;font-size:13px;">&#8592; Back to Map</button>
+    <button class="btn btn-success" id="submitBtn">Submit &amp; Continue</button>
+  </div>
+  <div class="paint-toolbar" id="paintToolbar">
+    <label style="font-size:12px;font-weight:600;color:#555">Brush</label>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;color:#999">Sm</span>
+      <input type="range" id="brushSizeSlider" min="20" max="300" value="50" style="width:90px">
+      <span style="font-size:11px;color:#999">Lg</span>
+      <div id="brushPreview" style="width:18px;height:18px;border-radius:50%;background:rgba(44,62,80,0.25);border:2px solid #2c3e50;flex-shrink:0"></div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="tool-btn" id="paintUndoBtn" disabled>&#8617; Undo</button>
+      <button class="tool-btn" id="paintResetBtn">&#8635; Reset</button>
+    </div>
+  </div>
+  <div class="map-wrap" style="position:relative">
+    <div class="edit-instructions" id="editInstructions" style="display:flex">
+      <div class="instructions-box">
+        <h3 style="margin-top:0">Fine-Tune Your Map</h3>
+        <p>Hold the mouse button and drag to paint adjustments onto specific areas.
+           You can undo any stroke or reset all changes.</p>
+        <button class="btn btn-primary" id="startEditingBtn">Start Editing &#8594;</button>
+      </div>
+    </div>
+    <div id="mapEdit" style="width:100%;height:100%"></div>
+  </div>
+</div>
 </body>
 </html>
