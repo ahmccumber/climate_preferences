@@ -221,7 +221,6 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" id="backBtn" style="padding:8px 18px;font-size:13px;">&#8592; Adjust Priorities</button>
       <button class="btn btn-success" id="goToEditBtn">&#9998; Fine-Tune My Map &#8594;</button>
-      <button class="btn btn-success" id="submitBtn">Submit &amp; Continue</button>
       <div class="success-message" id="successMsg">Saved!</div>
     </div>
   </div>
@@ -376,6 +375,11 @@ function stopPainting(){
 
 function renderEditMap(){
   if(mapEdit){mapEdit.remove();mapEdit=null;gridLayerEdit=null;}
+  // Explicitly size the container so Leaflet doesn't get 0px height
+  var mapEl = document.getElementById('mapEdit');
+  var wrapEl = mapEl.parentElement;
+  var h = wrapEl.offsetHeight || window.innerHeight - 120;
+  mapEl.style.height = h + 'px';
   mapEdit=L.map('mapEdit',{zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(mapEdit);
   paintScores={}; var allS=[];
@@ -396,6 +400,7 @@ function renderEditMap(){
   mapEdit.fitBounds(gridLayerEdit.getBounds());
   setTimeout(function(){mapEdit.invalidateSize({animate:false});},100);
   setTimeout(function(){
+    document.getElementById('mapEdit').style.height = '100%';
     mapEdit.invalidateSize({animate:false});
     if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds());
   },400);
@@ -454,9 +459,12 @@ document.getElementById('goToEditBtn').addEventListener('click',function(){
   document.getElementById('paintToolbar').classList.remove('visible');
   document.getElementById('mapEdit').classList.remove('paint-mode');
   isPainting=false;
+  // Use rAF + setTimeout so screen3 is fully painted before Leaflet measures it
   function tryRender() {
-    if (geojsonData) { setTimeout(renderEditMap, 50); }
-    else { setTimeout(tryRender, 100); }
+    if (!geojsonData) { setTimeout(tryRender, 100); return; }
+    requestAnimationFrame(function() {
+      setTimeout(renderEditMap, 50);
+    });
   }
   tryRender();
 });
