@@ -136,7 +136,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 .screen.active{display:flex;}
 .map-wrap{flex:1;position:relative;min-height:0;}
 #map,#mapEdit{width:100%;height:100%;}
-#screen3{position:relative;}
+#screen3{}
 .edit-instructions{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:1000;justify-content:center;align-items:center;}
 .edit-instructions.visible{display:flex;}
 .instructions-box{background:white;border-radius:12px;padding:30px 36px;max-width:460px;}
@@ -257,7 +257,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
       <button class="tool-btn" id="paintResetBtn">&#8635; Reset</button>
     </div>
   </div>
-  <div class="map-wrap" style="position:relative">
+  <div class="map-wrap">
     <div class="edit-instructions" id="editInstructions">
       <div class="instructions-box">
         <h3 style="margin-top:0">Fine-Tune Your Map</h3>
@@ -394,7 +394,11 @@ function renderEditMap(){
     }
   }).addTo(mapEdit);
   mapEdit.fitBounds(gridLayerEdit.getBounds());
-  setTimeout(function(){mapEdit.invalidateSize();},60);
+  setTimeout(function(){mapEdit.invalidateSize({animate:false});},100);
+  setTimeout(function(){
+    mapEdit.invalidateSize({animate:false});
+    if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds());
+  },400);
   if(!window._paintInitialized){
     window._paintInitialized=true;
     setTimeout(initPaintToolbar,80);
@@ -450,7 +454,6 @@ document.getElementById('goToEditBtn').addEventListener('click',function(){
   document.getElementById('paintToolbar').classList.remove('visible');
   document.getElementById('mapEdit').classList.remove('paint-mode');
   isPainting=false;
-  // Wait for geojsonData if it hasn't finished loading yet
   function tryRender() {
     if (geojsonData) { setTimeout(renderEditMap, 50); }
     else { setTimeout(tryRender, 100); }
