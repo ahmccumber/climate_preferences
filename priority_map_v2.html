@@ -329,169 +329,182 @@ document.getElementById('backBtn').addEventListener('click',function(){
   document.getElementById('screen1').classList.add('active');
 });
 
-// ── Paint ────────────────────────────────────────────────────────────────
-var paintMode='raise', isBinary=false, brushRadiusKm=50;
-var paintScores={}, editedCells={}, undoStack=[];
-var isPainting=false, paintInterval=null, lastPaintLatLng=null, paintedThisStroke={};
-var paintMinS=0, paintMaxS=1;
-var mapEdit=null, gridLayerEdit=null;
+// ── Paint / Edit ─────────────────────────────────────────────────────────
+var mapEdit = null, gridLayerEdit = null;
+var paintActive = false, isPainting = false, paintMode = 'raise';
+var brushRadiusKm = 50, lastPaintLatLng = null, paintInterval = null;
+var paintedThisStroke = {}, editedCells = {}, undoStack = [];
+var paintMinS = 0, paintMaxS = 1, paintReady = false;
 
-function paintCellColor(s){var t=paintMaxS>paintMinS?(s-paintMinS)/(paintMaxS-paintMinS):0.5;t=Math.max(0,Math.min(1,t));return interpolateColor(t);}
+function paintCellColor(score) {
+  var t = (paintMaxS > paintMinS) ? (score - paintMinS) / (paintMaxS - paintMinS) : 0.5;
+  t = Math.max(0, Math.min(1, t));
+  return interpolateColor(t);
+}
 
-function cellsInBrush(latlng){
-  var R=6371,hits=[];
-  gridLayerEdit.eachLayer(function(l){
-    var cid=l.feature.properties.cell_id, c=l.getBounds().getCenter();
-    var dLat=(c.lat-latlng.lat)*Math.PI/180, dLng=(c.lng-latlng.lng)*Math.PI/180;
-    var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-    if(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))<=brushRadiusKm) hits.push(cid);
+function recolorLayers(layers) {
+  var gl = gridLayerEdit;
+  if (!gl) return;
+  var fn = function(l) {
+    var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
+    l.setStyle({ fillColor: paintCellColor(s) });
+  };
+  if (layers) { layers.forEach(fn); } else { gl.eachLayer(fn); }
+}
+
+function cellsInBrush(latlng) {
+  var R = 6371, hits = [];
+  if (!gridLayerEdit) return hits;
+  gridLayerEdit.eachLayer(function(l) {
+    var c = l.getBounds().getCenter();
+    var dLat = (c.lat - latlng.lat) * Math.PI / 180;
+    var dLng = (c.lng - latlng.lng) * Math.PI / 180;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) <= brushRadiusKm) hits.push(l);
   });
   return hits;
 }
 
-function recolorLayers(layers){
-  var target=layers||[];
-  if(!layers){gridLayerEdit.eachLayer(function(l){target.push(l);});}
-  target.forEach(function(l){
-    var cid=l.feature?l.feature.properties.cell_id:null; if(!cid)return;
-    var s=paintScores[cid]!==undefined?paintScores[cid]:0.5;
-    l.setStyle({fillColor:paintCellColor(s),fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5});
+function nudgeTick() {
+  if (!isPainting || !lastPaintLatLng) return;
+  var layers = cellsInBrush(lastPaintLatLng);
+  var changed = [];
+  layers.forEach(function(l) {
+    var cur = l._paintScore;
+    var next = paintMode === 'raise' ? Math.min(1, cur + 0.02) : Math.max(0, cur - 0.02);
+    if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
   });
+  if (changed.length) recolorLayers(changed);
 }
 
-function nudgeTick(){
-  if(!isPainting||!lastPaintLatLng)return;
-  var hits=cellsInBrush(lastPaintLatLng), changed={};
-  hits.forEach(function(cid){ var cur=paintScores[cid]; var next=paintMode==='raise'?Math.min(1,cur+0.02):Math.max(0,cur-0.02); if(next!==cur){paintScores[cid]=next;editedCells[cid]=true;changed[cid]=true;} });
-  if(Object.keys(changed).length>0){
-    var ls=[]; gridLayerEdit.eachLayer(function(l){if(changed[l.feature.properties.cell_id])ls.push(l);});
-    recolorLayers(ls);
+function stopPainting() {
+  if (isPainting) {
+    isPainting = false;
+    clearInterval(paintInterval); paintInterval = null;
+    paintedThisStroke = {};
   }
 }
 
-function stopPainting(){
-  if(!isPainting)return;
-  isPainting=false; paintedThisStroke={};
-  lastPaintLatLng=null;
-  if(paintInterval){clearInterval(paintInterval);paintInterval=null;}
-}
+function renderEditMap() {
+  paintReady = false;
+  if (mapEdit) { mapEdit.remove(); mapEdit = null; }
+  gridLayerEdit = null; editedCells = {}; undoStack = [];
 
-function renderEditMap(){
-  if(mapEdit){mapEdit.remove();mapEdit=null;gridLayerEdit=null;}
-  mapEdit=L.map('mapEdit',{zoomControl:true,attributionControl:false});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{subdomains:'abc',maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(mapEdit);
-  paintScores={}; var allS=[];
-  geojsonData.features.forEach(function(f){
-    var s=computeComposite(f.properties);
-    paintScores[f.properties.cell_id]=s; allS.push(s);
-  });
-  window._basePaintScores=JSON.parse(JSON.stringify(paintScores));
-  paintMinS=Math.min.apply(null,allS); paintMaxS=Math.max.apply(null,allS);
-  editedCells={}; undoStack=[];
-  document.getElementById('paintUndoBtn').disabled=true;
-  gridLayerEdit=L.geoJSON(geojsonData,{
-    style:function(feature){
-      var raw=computeComposite(feature.properties);
-      return {fillColor:interpolateColor(paintMaxS > paintMinS ? (raw-paintMinS)/(paintMaxS-paintMinS) : 0.5),fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5};
+  mapEdit = L.map('mapEdit', { zoomControl: true }).setView([39.5, -98.35], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  }).addTo(mapEdit);
+
+  var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
+  paintMinS = Math.min.apply(null, scores);
+  paintMaxS = Math.max.apply(null, scores);
+
+  gridLayerEdit = L.geoJSON(geojsonData, {
+    style: function(feature) {
+      var raw = computeComposite(feature.properties);
+            var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
+      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5, stroke: true };
+    },
+    onEachFeature: function(feature, layer) {
+      layer.on('mousedown', function(e) {
+        if (!paintActive) return;
+        L.DomEvent.stopPropagation(e);
+        if (!isPainting) {
+          isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
+          var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
+          undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
+          document.getElementById('paintUndoBtn').disabled = false;
+          nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+        }
+      });
+      layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
+      layer.on('mouseup', stopPainting);
     }
   }).addTo(mapEdit);
+
+  gridLayerEdit.eachLayer(function(l) {
+    l._paintScore = computeComposite(l.feature.properties);
+    l._baseScore  = l._paintScore;
+  });
+
+  mapEdit.on('mouseup', stopPainting);
+  document.addEventListener('mouseup', stopPainting);
+
   mapEdit.fitBounds(gridLayerEdit.getBounds());
+  setTimeout(function(){ mapEdit.invalidateSize({animate:false}); }, 100);
+  setTimeout(function(){ mapEdit.invalidateSize({animate:false}); if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds()); }, 400);
 
-  // Disable map interaction so mouse events reach paint handlers
-  mapEdit.dragging.disable();
-  mapEdit.scrollWheelZoom.disable();
-  mapEdit.doubleClickZoom.disable();
-  mapEdit.boxZoom.disable();
-
-  // Wire paint events directly on DOM container
-  var mapContainer = mapEdit.getContainer();
-  mapContainer.addEventListener('mousedown', function(e) {
-    var rect = mapContainer.getBoundingClientRect();
-    var point = L.point(e.clientX - rect.left, e.clientY - rect.top);
-    lastPaintLatLng = mapEdit.containerPointToLatLng(point);
-    isPainting = true; paintedThisStroke = {};
-    undoStack.push(JSON.parse(JSON.stringify(paintScores)));
-    document.getElementById('paintUndoBtn').disabled = false;
-    nudgeTick();
-    paintInterval = setInterval(nudgeTick, 80);
-    e.preventDefault();
-  });
-  mapContainer.addEventListener('mousemove', function(e) {
-    if (!isPainting) return;
-    var rect = mapContainer.getBoundingClientRect();
-    var point = L.point(e.clientX - rect.left, e.clientY - rect.top);
-    lastPaintLatLng = mapEdit.containerPointToLatLng(point);
-  });
-  mapContainer.addEventListener('mouseup', stopPainting);
-  mapContainer.addEventListener('mouseleave', stopPainting);
-
-  setTimeout(function(){mapEdit.invalidateSize({animate:false});},100);
-  setTimeout(function(){
-    mapEdit.invalidateSize({animate:false});
-    if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds());
-  },400);
-  if(!window._paintInitialized){
-    window._paintInitialized=true;
-    setTimeout(initPaintToolbar,80);
-  }
+  paintReady = true;
+  document.getElementById('paintUndoBtn').disabled = true;
 }
 
-function initPaintToolbar(){
-  document.getElementById('paintRaiseBtn').addEventListener('click',function(){paintMode='raise';this.classList.add('active');document.getElementById('paintLowerBtn').classList.remove('active');});
-  document.getElementById('paintLowerBtn').addEventListener('click',function(){paintMode='lower';this.classList.add('active');document.getElementById('paintRaiseBtn').classList.remove('active');});
-  document.getElementById('brushSizeSlider').addEventListener('input',function(){
-    brushRadiusKm=parseInt(this.value);
-    var px=10+(brushRadiusKm/300)*28;
-    var bp=document.getElementById('brushPreview');
-    bp.style.width=px+'px'; bp.style.height=px+'px';
-  });
-  document.getElementById('paintUndoBtn').addEventListener('click',function(){
-    if(!undoStack.length)return;
-    paintScores=undoStack.pop(); editedCells={};
-    Object.keys(paintScores).forEach(function(k){if(paintScores[k]!==window._basePaintScores[k])editedCells[k]=true;});
-    this.disabled=undoStack.length===0; recolorLayers(null);
-  });
-  document.getElementById('paintResetBtn').addEventListener('click',function(){
-    if(!confirm('Reset all manual edits?'))return;
-    undoStack.push(JSON.parse(JSON.stringify(paintScores)));
-    paintScores=JSON.parse(JSON.stringify(window._basePaintScores));
-    editedCells={}; document.getElementById('paintUndoBtn').disabled=false;
-    recolorLayers(null);
-  });
-}
-
-document.getElementById('startEditingBtn').addEventListener('click',function(){
+// ── Screen 3 navigation ───────────────────────────────────────────────────
+document.getElementById('startEditingBtn').addEventListener('click', function() {
   document.getElementById('editInstructions').classList.remove('visible');
   document.getElementById('paintToolbar').classList.add('visible');
   document.getElementById('mapEdit').classList.add('paint-mode');
-  if (mapEdit) { mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable(); }
+  paintActive = true;
+  if (mapEdit) { mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable(); mapEdit.doubleClickZoom.disable(); }
 });
 
-document.getElementById('goToEditBtn').addEventListener('click',function(){
+document.getElementById('goToEditBtn').addEventListener('click', function() {
   document.getElementById('screen2').classList.remove('active');
   document.getElementById('screen3').classList.add('active');
   document.getElementById('editInstructions').classList.add('visible');
   document.getElementById('paintToolbar').classList.remove('visible');
   document.getElementById('mapEdit').classList.remove('paint-mode');
-  isPainting=false;
-  // Use rAF + setTimeout so screen3 is fully painted before Leaflet measures it
+  paintActive = false;
   function tryRender() {
     if (!geojsonData) { setTimeout(tryRender, 100); return; }
-    requestAnimationFrame(function() {
-      setTimeout(renderEditMap, 50);
-    });
+    requestAnimationFrame(function() { setTimeout(renderEditMap, 50); });
   }
   tryRender();
 });
 
-document.getElementById('backToMapBtn').addEventListener('click',function(){
-  stopPainting();
+document.getElementById('backToMapBtn').addEventListener('click', function() {
+  stopPainting(); paintActive = false;
+  document.getElementById('mapEdit').classList.remove('paint-mode');
   document.getElementById('screen3').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
-  setTimeout(function(){if(map)map.invalidateSize();},60);
+  setTimeout(function(){ if(map) map.invalidateSize(); }, 60);
 });
 
-// ── Submit ────────────────────────────────────────────────────────────────
+document.getElementById('paintRaiseBtn').addEventListener('click', function() {
+  paintMode = 'raise';
+  this.classList.add('active');
+  document.getElementById('paintLowerBtn').classList.remove('active');
+});
+document.getElementById('paintLowerBtn').addEventListener('click', function() {
+  paintMode = 'lower';
+  this.classList.add('active');
+  document.getElementById('paintRaiseBtn').classList.remove('active');
+});
+document.getElementById('brushSizeSlider').addEventListener('input', function() {
+  brushRadiusKm = parseInt(this.value);
+  var px = 10 + (brushRadiusKm / 300) * 28;
+  var bp = document.getElementById('brushPreview');
+  bp.style.width = px + 'px'; bp.style.height = px + 'px';
+});
+
+document.getElementById('paintUndoBtn').addEventListener('click', function() {
+  if (!undoStack.length) return;
+  var snap = undoStack.pop();
+  gridLayerEdit.eachLayer(function(l) { if (snap[l._leaflet_id] !== undefined) l._paintScore = snap[l._leaflet_id]; });
+  editedCells = {};
+  gridLayerEdit.eachLayer(function(l) { if (l._paintScore !== l._baseScore) editedCells[l._leaflet_id] = true; });
+  this.disabled = undoStack.length === 0;
+  recolorLayers(null);
+});
+
+document.getElementById('paintResetBtn').addEventListener('click', function() {
+  if (!confirm('Reset all manual edits?')) return;
+  var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
+  undoStack.push(snap);
+  document.getElementById('paintUndoBtn').disabled = false;
+  gridLayerEdit.eachLayer(function(l) { l._paintScore = l._baseScore; });
+  editedCells = {}; recolorLayers(null);
+});
+
 document.getElementById('submitBtn').addEventListener('click',function(){
   var wv={};
   HAZARDS.concat(COST).forEach(function(f){wv[f.id]=weights[f.id];});
@@ -502,11 +515,16 @@ document.getElementById('submitBtn').addEventListener('click',function(){
     weights:wv, urban_preference:urbanChoice, political_alignment:politicsAlignment,
     weather_heat_direction:weatherDirections.extreme_heat,
     weather_cold_direction:weatherDirections.extreme_cold,
-    cell_scores:geojsonData?geojsonData.features.map(function(feat){
-      var cid=feat.properties.cell_id;
-      var s=paintScores[cid]!==undefined?paintScores[cid]:computeComposite(feat.properties);
-      return {cell_id:cid,composite_score:parseFloat(s.toFixed(4)),manually_edited:editedCells[cid]?true:false};
-    }):[]
+    cell_scores:(function(){
+      var out=[];
+      if(gridLayerEdit){gridLayerEdit.eachLayer(function(l){
+        var s=l._paintScore!==undefined?l._paintScore:computeComposite(l.feature.properties);
+        out.push({cell_id:l.feature.properties.cell_id,composite_score:parseFloat(s.toFixed(4)),manually_edited:editedCells[l._leaflet_id]?true:false});
+      });} else if(geojsonData){geojsonData.features.forEach(function(f){
+        out.push({cell_id:f.properties.cell_id,composite_score:parseFloat(computeComposite(f.properties).toFixed(4)),manually_edited:false});
+      });}
+      return out;
+    })()
   };
   window.parent.postMessage({type:'priorityMapData',data:payload,dataString:JSON.stringify(payload),autoAdvance:true},'*');
 });
