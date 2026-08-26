@@ -394,7 +394,7 @@ function renderEditMap(){
   gridLayerEdit=L.geoJSON(geojsonData,{
     style:function(feature){
       var raw=computeComposite(feature.properties);
-      return {fillColor:interpolateColor(maxS > minS ? (raw-minS)/(maxS-minS) : 0.5),fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5};
+      return {fillColor:interpolateColor(paintMaxS > paintMinS ? (raw-paintMinS)/(paintMaxS-paintMinS) : 0.5),fillOpacity:0.75,color:'rgba(0,0,0,0.1)',weight:0.5};
     }
   }).addTo(mapEdit);
   mapEdit.fitBounds(gridLayerEdit.getBounds());
