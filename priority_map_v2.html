@@ -396,6 +396,20 @@ function renderEditMap(){
     }
   }).addTo(mapEdit);
   mapEdit.fitBounds(gridLayerEdit.getBounds());
+
+  // Wire paint events to this mapEdit instance
+  mapEdit.on('mousedown',function(e){
+    if(!document.getElementById('mapEdit').classList.contains('paint-mode')) return;
+    isPainting=true; paintedThisStroke={};
+    lastPaintLatLng=e.latlng;
+    undoStack.push(JSON.parse(JSON.stringify(paintScores)));
+    document.getElementById('paintUndoBtn').disabled=false;
+    nudgeTick();
+    paintInterval=setInterval(nudgeTick,80);
+  });
+  mapEdit.on('mousemove',function(e){ lastPaintLatLng=e.latlng; });
+  mapEdit.on('mouseup',stopPainting);
+
   setTimeout(function(){mapEdit.invalidateSize({animate:false});},100);
   setTimeout(function(){
     mapEdit.invalidateSize({animate:false});
@@ -429,17 +443,6 @@ function initPaintToolbar(){
     editedCells={}; document.getElementById('paintUndoBtn').disabled=false;
     recolorLayers(null);
   });
-  mapEdit.on('mousedown',function(e){
-    isPainting=true; paintedThisStroke={};
-    lastPaintLatLng=e.latlng;
-    undoStack.push(JSON.parse(JSON.stringify(paintScores)));
-    document.getElementById('paintUndoBtn').disabled=false;
-    nudgeTick();
-    paintInterval=setInterval(nudgeTick,80);
-  });
-  mapEdit.on('mousemove',function(e){lastPaintLatLng=e.latlng;});
-  mapEdit.on('mouseup',stopPainting);
-  document.addEventListener('mouseup',stopPainting);
 }
 
 document.getElementById('startEditingBtn').addEventListener('click',function(){
