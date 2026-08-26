@@ -148,6 +148,46 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 .tool-btn{padding:6px 14px;border:1px solid #ccc;border-radius:6px;background:#f8f8f8;cursor:pointer;}
 .tool-btn.active{background:#2c3e50;color:white;border-color:#2c3e50;}
 #mapEdit.paint-mode{cursor:crosshair;}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Screen 1 */
+  #screen1 .body { padding: 12px 14px 10px; }
+  .header { padding: 12px 16px; }
+  .header h1 { font-size: 16px; }
+  .section-label { margin: 14px 0 8px; }
+
+  /* Stepper buttons — larger touch targets */
+  .stepper-btn { width: 48px; height: 48px; font-size: 22px; }
+  .stepper-val { font-size: 16px; }
+
+  /* Urban / politics choice chips */
+  .urban-choice { font-size: 12px; padding: 8px 6px; }
+
+  /* Screen 2 header */
+  #screen2 .header { padding: 10px 14px; gap: 8px; }
+  #screen2 .header h1 { font-size: 14px; }
+  #screen2 .header p { display: none; }
+  #screen2 .header .btn { font-size: 12px; padding: 6px 12px; }
+
+  /* Weights summary — collapse on mobile */
+  .weights-summary { display: none; }
+
+  /* Screen 3 header */
+  #screen3 .header { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+  #screen3 .header .btn { font-size: 12px; padding: 6px 12px; }
+
+  /* Paint toolbar — bigger touch targets, more spacing */
+  .paint-toolbar { padding: 10px 12px; gap: 10px; }
+  .tool-btn { padding: 10px 16px; font-size: 14px; min-height: 44px; }
+
+  /* Landing card */
+  .landing-card { padding: 28px 22px; }
+  .landing-card h1 { font-size: 20px; }
+
+  /* Modal */
+  .modal-box { padding: 24px 20px; }
+}
 </style>
 </head>
 <body>
@@ -390,7 +430,15 @@ function renderEditMap() {
   if (mapEdit) { mapEdit.remove(); mapEdit = null; }
   gridLayerEdit = null; editedCells = {}; undoStack = [];
 
-  mapEdit = L.map('mapEdit', { zoomControl: true }).setView([39.5, -98.35], 4);
+  mapEdit = L.map('mapEdit', {
+    zoomControl: true,
+    dragging: false,
+    tap: false,
+    touchZoom: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false
+  }).setView([39.5, -98.35], 4);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
   }).addTo(mapEdit);
@@ -430,6 +478,34 @@ function renderEditMap() {
   mapEdit.on('mouseup', stopPainting);
   document.addEventListener('mouseup', stopPainting);
 
+  // Touch support for paint brush via L.DomEvent
+  var container = mapEdit.getContainer();
+  function getTouchLatLng(e) {
+    var touch = e.touches[0] || e.changedTouches[0];
+    var rect = container.getBoundingClientRect();
+    return mapEdit.containerPointToLatLng(
+      L.point(touch.clientX - rect.left, touch.clientY - rect.top));
+  }
+  L.DomEvent.on(container, 'touchstart', function(e) {
+    if (!paintActive) return;
+    L.DomEvent.preventDefault(e);
+    lastPaintLatLng = getTouchLatLng(e);
+    if (!isPainting) {
+      isPainting = true; paintedThisStroke = {};
+      var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
+      undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
+      document.getElementById('paintUndoBtn').disabled = false;
+      nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+    }
+  });
+  L.DomEvent.on(container, 'touchmove', function(e) {
+    if (!paintActive || !isPainting) return;
+    L.DomEvent.preventDefault(e);
+    lastPaintLatLng = getTouchLatLng(e);
+  });
+  L.DomEvent.on(container, 'touchend', stopPainting);
+  L.DomEvent.on(container, 'touchcancel', stopPainting);
+
   mapEdit.fitBounds(gridLayerEdit.getBounds());
   setTimeout(function(){ mapEdit.invalidateSize({animate:false}); }, 100);
   setTimeout(function(){ mapEdit.invalidateSize({animate:false}); if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds()); }, 400);
@@ -444,7 +520,6 @@ document.getElementById('startEditingBtn').addEventListener('click', function() 
   document.getElementById('paintToolbar').classList.add('visible');
   document.getElementById('mapEdit').classList.add('paint-mode');
   paintActive = true;
-  if (mapEdit) { mapEdit.dragging.disable(); mapEdit.scrollWheelZoom.disable(); mapEdit.doubleClickZoom.disable(); }
 });
 
 document.getElementById('goToEditBtn').addEventListener('click', function() {
