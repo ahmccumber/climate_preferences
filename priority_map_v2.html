@@ -136,6 +136,9 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 .screen.active{display:flex;}
 .map-wrap{flex:1;position:relative;min-height:0;}
 #map,#mapEdit{width:100%;height:100%;}
+#screen3 .map-wrap{height:calc(100vh - 120px);flex:1;}
+#screen3{display:none;flex-direction:column;height:100vh;}
+#screen3.active{display:flex;}
 #screen3{}
 .edit-instructions{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:1000;justify-content:center;align-items:center;}
 .edit-instructions.visible{display:flex;}
@@ -375,13 +378,8 @@ function stopPainting(){
 
 function renderEditMap(){
   if(mapEdit){mapEdit.remove();mapEdit=null;gridLayerEdit=null;}
-  // Explicitly size the container so Leaflet doesn't get 0px height
-  var mapEl = document.getElementById('mapEdit');
-  var wrapEl = mapEl.parentElement;
-  var h = wrapEl.offsetHeight || window.innerHeight - 120;
-  mapEl.style.height = h + 'px';
   mapEdit=L.map('mapEdit',{zoomControl:true,attributionControl:false});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(mapEdit);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(mapEdit);
   paintScores={}; var allS=[];
   geojsonData.features.forEach(function(f){
     var s=computeComposite(f.properties);
@@ -400,7 +398,6 @@ function renderEditMap(){
   mapEdit.fitBounds(gridLayerEdit.getBounds());
   setTimeout(function(){mapEdit.invalidateSize({animate:false});},100);
   setTimeout(function(){
-    document.getElementById('mapEdit').style.height = '100%';
     mapEdit.invalidateSize({animate:false});
     if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds());
   },400);
