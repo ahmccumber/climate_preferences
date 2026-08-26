@@ -403,17 +403,27 @@ function renderEditMap(){
   mapEdit.doubleClickZoom.disable();
   mapEdit.boxZoom.disable();
 
-  // Wire paint events to this mapEdit instance
-  mapEdit.on('mousedown',function(e){
-    isPainting=true; paintedThisStroke={};
-    lastPaintLatLng=e.latlng;
+  // Wire paint events directly on DOM container
+  var mapContainer = mapEdit.getContainer();
+  mapContainer.addEventListener('mousedown', function(e) {
+    var rect = mapContainer.getBoundingClientRect();
+    var point = L.point(e.clientX - rect.left, e.clientY - rect.top);
+    lastPaintLatLng = mapEdit.containerPointToLatLng(point);
+    isPainting = true; paintedThisStroke = {};
     undoStack.push(JSON.parse(JSON.stringify(paintScores)));
-    document.getElementById('paintUndoBtn').disabled=false;
+    document.getElementById('paintUndoBtn').disabled = false;
     nudgeTick();
-    paintInterval=setInterval(nudgeTick,80);
+    paintInterval = setInterval(nudgeTick, 80);
+    e.preventDefault();
   });
-  mapEdit.on('mousemove',function(e){ lastPaintLatLng=e.latlng; });
-  mapEdit.on('mouseup',stopPainting);
+  mapContainer.addEventListener('mousemove', function(e) {
+    if (!isPainting) return;
+    var rect = mapContainer.getBoundingClientRect();
+    var point = L.point(e.clientX - rect.left, e.clientY - rect.top);
+    lastPaintLatLng = mapEdit.containerPointToLatLng(point);
+  });
+  mapContainer.addEventListener('mouseup', stopPainting);
+  mapContainer.addEventListener('mouseleave', stopPainting);
 
   setTimeout(function(){mapEdit.invalidateSize({animate:false});},100);
   setTimeout(function(){
