@@ -379,7 +379,7 @@ function stopPainting(){
 function renderEditMap(){
   if(mapEdit){mapEdit.remove();mapEdit=null;gridLayerEdit=null;}
   mapEdit=L.map('mapEdit',{zoomControl:true,attributionControl:false});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(mapEdit);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{subdomains:'abc',maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(mapEdit);
   paintScores={}; var allS=[];
   geojsonData.features.forEach(function(f){
     var s=computeComposite(f.properties);
@@ -397,9 +397,14 @@ function renderEditMap(){
   }).addTo(mapEdit);
   mapEdit.fitBounds(gridLayerEdit.getBounds());
 
+  // Disable map interaction so mouse events reach paint handlers
+  mapEdit.dragging.disable();
+  mapEdit.scrollWheelZoom.disable();
+  mapEdit.doubleClickZoom.disable();
+  mapEdit.boxZoom.disable();
+
   // Wire paint events to this mapEdit instance
   mapEdit.on('mousedown',function(e){
-    if(!document.getElementById('mapEdit').classList.contains('paint-mode')) return;
     isPainting=true; paintedThisStroke={};
     lastPaintLatLng=e.latlng;
     undoStack.push(JSON.parse(JSON.stringify(paintScores)));
