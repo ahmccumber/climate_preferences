@@ -357,7 +357,16 @@ document.getElementById('proceedBtn').addEventListener('click',function(){
   document.getElementById('screen1').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
   document.getElementById('mapIntroModal').classList.add('visible');
-  setTimeout(function(){renderMap();},50);
+  setTimeout(function(){
+    renderMap();
+    // Snapshot pre-adjustment scores from current weights
+    if (geojsonData) {
+      preScores = {};
+      geojsonData.features.forEach(function(f) {
+        preScores[f.properties.cell_id] = parseFloat(computeComposite(f.properties).toFixed(4));
+      });
+    }
+  }, 50);
 });
 
 document.getElementById('modalOkBtn').addEventListener('click',function(){
@@ -374,6 +383,7 @@ var mapEdit = null, gridLayerEdit = null;
 var paintActive = false, isPainting = false, paintMode = 'raise';
 var brushRadiusKm = 50, lastPaintLatLng = null, paintInterval = null;
 var paintedThisStroke = {}, editedCells = {}, undoStack = [];
+var preScores = {};  // cell_id -> score, captured when user first sees map
 var paintMinS = 0, paintMaxS = 1, paintReady = false;
 
 function paintCellColor(score) {
@@ -580,28 +590,45 @@ document.getElementById('paintResetBtn').addEventListener('click', function() {
   editedCells = {}; recolorLayers(null);
 });
 
-document.getElementById('submitBtn').addEventListener('click',function(){
-  var wv={};
-  HAZARDS.concat(COST).forEach(function(f){wv[f.id]=weights[f.id];});
-  wv.urban=urbanWeight; wv.election_diff=politicsWeights.election_diff;
-  wv.state_election_diff=politicsWeights.state_election_diff;
-  wv.extreme_heat=weatherWeights.extreme_heat; wv.extreme_cold=weatherWeights.extreme_cold;
-  var payload={
-    weights:wv, urban_preference:urbanChoice, political_alignment:politicsAlignment,
-    weather_heat_direction:weatherDirections.extreme_heat,
-    weather_cold_direction:weatherDirections.extreme_cold,
-    cell_scores:(function(){
-      var out=[];
-      if(gridLayerEdit){gridLayerEdit.eachLayer(function(l){
-        var s=l._paintScore!==undefined?l._paintScore:computeComposite(l.feature.properties);
-        out.push({cell_id:l.feature.properties.cell_id,composite_score:parseFloat(s.toFixed(4)),manually_edited:editedCells[l._leaflet_id]?true:false});
-      });} else if(geojsonData){geojsonData.features.forEach(function(f){
-        out.push({cell_id:f.properties.cell_id,composite_score:parseFloat(computeComposite(f.properties).toFixed(4)),manually_edited:false});
-      });}
-      return out;
-    })()
+document.getElementById('submitBtn').addEventListener('click', function() {
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  // Build weight vector
+  var wv = {};
+  HAZARDS.concat(COST).forEach(function(f) { wv[f.id] = weights[f.id]; });
+  wv.urban = urbanWeight;
+  wv.election_diff = politicsWeights.election_diff;
+  wv.state_election_diff = politicsWeights.state_election_diff;
+  wv.extreme_heat = weatherWeights.extreme_heat;
+  wv.extreme_cold = weatherWeights.extreme_cold;
+
+  // Build edited-cells list (post scores only for cells that were manually changed)
+  var editedList = [];
+  if (gridLayerEdit) {
+    gridLayerEdit.eachLayer(function(l) {
+      var cid = l.feature.properties.cell_id;
+      if (editedCells[l._leaflet_id]) {
+        editedList.push({ cell_id: cid, post_score: parseFloat(l._paintScore.toFixed(4)) });
+      }
+    });
+  }
+
+  var payload = {
+    type: 'priorityMapData',
+    weights: wv,
+    urban_preference: urbanChoice,
+    political_alignment: politicsAlignment,
+    weather_heat_direction: weatherDirections.extreme_heat,
+    weather_cold_direction: weatherDirections.extreme_cold,
+    edited_cells: editedList,   // sparse: only manually painted cells
+    // pre-scores fully reconstructable from weights + grid in R
+    autoAdvance: true
   };
-  window.parent.postMessage({type:'priorityMapData',data:payload,dataString:JSON.stringify(payload),autoAdvance:true},'*');
+
+  window.parent.postMessage(payload, '*');
+  btn.textContent = 'Saved ✓';
 });
 
 </script>
@@ -955,7 +982,7 @@ var map = null, gridLayer = null, geojsonData = null;
 function initMap() {
   if (map) return;
   map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 4);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
 }
