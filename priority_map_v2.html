@@ -437,6 +437,36 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
   };
 })();
 
+// ── Screen 0 / 1 / 2 navigation ──────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', function() {
+  document.getElementById('screen0').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
+
+document.getElementById('proceedBtn').addEventListener('click', function() {
+  document.getElementById('screen1').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  document.getElementById('mapIntroModal').classList.add('visible');
+  setTimeout(function() {
+    renderMap();
+    if (geojsonData) {
+      preScores = {};
+      geojsonData.features.forEach(function(f) {
+        preScores[f.properties.cell_id] = parseFloat(computeComposite(f.properties).toFixed(4));
+      });
+    }
+  }, 50);
+});
+
+document.getElementById('modalOkBtn').addEventListener('click', function() {
+  document.getElementById('mapIntroModal').classList.remove('visible');
+});
+
+document.getElementById('backBtn').addEventListener('click', function() {
+  document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
+
 // ── Screen 3 navigation ───────────────────────────────────────────────────
 document.getElementById('startEditingBtn').addEventListener('click', function() {
   document.getElementById('editInstructions').classList.remove('visible');
