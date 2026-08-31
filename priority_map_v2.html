@@ -943,6 +943,154 @@ function renderMap() {
 
 
 
+// ── Paint engine ─────────────────────────────────────────────────────────
+var mapEdit = null, gridLayerEdit = null;
+var paintActive = false, isPainting = false, paintMode = 'raise';
+var brushRadiusKm = 50, lastPaintLatLng = null, paintInterval = null;
+var paintedThisStroke = {}, editedCells = {}, undoStack = [];
+var paintMinS = 0, paintMaxS = 1;
+
+function paintCellColor(score) {
+  var t = (paintMaxS > paintMinS) ? (score - paintMinS) / (paintMaxS - paintMinS) : 0.5;
+  t = Math.max(0, Math.min(1, t));
+  return interpolateColor(t);
+}
+
+function recolorLayers(layers) {
+  var target = layers || [];
+  if (!layers) { gridLayerEdit.eachLayer(function(l) { target.push(l); }); }
+  target.forEach(function(l) {
+    var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
+    l.setStyle({ fillColor: paintCellColor(s) });
+  });
+}
+
+function cellsInBrush(latlng) {
+  var R = 6371, hits = [];
+  if (!gridLayerEdit) return hits;
+  gridLayerEdit.eachLayer(function(l) {
+    var c = l.getBounds().getCenter();
+    var dLat = (c.lat - latlng.lat) * Math.PI / 180;
+    var dLng = (c.lng - latlng.lng) * Math.PI / 180;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*
+            Math.sin(dLng/2)*Math.sin(dLng/2);
+    if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) <= brushRadiusKm) hits.push(l);
+  });
+  return hits;
+}
+
+function nudgeTick() {
+  if (!isPainting || !lastPaintLatLng) return;
+  var layers = cellsInBrush(lastPaintLatLng), changed = [];
+  layers.forEach(function(l) {
+    var cur = l._paintScore;
+    var next = paintMode === 'raise' ? Math.min(1, cur + 0.02) : Math.max(0, cur - 0.02);
+    if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
+  });
+  if (changed.length) recolorLayers(changed);
+}
+
+function stopPainting() {
+  if (isPainting) {
+    isPainting = false;
+    clearInterval(paintInterval); paintInterval = null;
+    paintedThisStroke = {};
+  }
+}
+
+function renderEditMap() {
+  if (mapEdit) { mapEdit.remove(); mapEdit = null; }
+  gridLayerEdit = null; editedCells = {}; undoStack = [];
+
+  // Give #mapEdit an explicit height before Leaflet measures it
+  var mapEl = document.getElementById('mapEdit');
+  var headerH = 56 + 48; // approx header + toolbar height
+  mapEl.style.height = (window.innerHeight - headerH) + 'px';
+
+  mapEdit = L.map('mapEdit', {
+    zoomControl: true,
+    dragging: false, tap: false,
+    touchZoom: false, scrollWheelZoom: false,
+    doubleClickZoom: false, boxZoom: false
+  }).setView([39.5, -98.35], 4);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  }).addTo(mapEdit);
+
+  var scores = geojsonData.features.map(function(f) { return computeComposite(f.properties); });
+  paintMinS = Math.min.apply(null, scores);
+  paintMaxS = Math.max.apply(null, scores);
+
+  gridLayerEdit = L.geoJSON(geojsonData, {
+    style: function(feature) {
+      var raw = computeComposite(feature.properties);
+      var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
+      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5, stroke: true };
+    },
+    onEachFeature: function(feature, layer) {
+      layer.on('mousedown', function(e) {
+        if (!paintActive) return;
+        L.DomEvent.stopPropagation(e);
+        if (!isPainting) {
+          isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
+          var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
+          undoStack.push(snap); if (undoStack.length > 200) undoStack.shift();
+          document.getElementById('paintUndoBtn').disabled = false;
+          nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+        }
+      });
+      layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
+      layer.on('mouseup', stopPainting);
+    }
+  }).addTo(mapEdit);
+
+  gridLayerEdit.eachLayer(function(l) {
+    l._paintScore = computeComposite(l.feature.properties);
+    l._baseScore  = l._paintScore;
+  });
+
+  mapEdit.on('mouseup', stopPainting);
+  document.addEventListener('mouseup', stopPainting);
+
+  // Touch support
+  var container = mapEdit.getContainer();
+  function getTouchLatLng(e) {
+    var touch = e.touches[0] || e.changedTouches[0];
+    var rect = container.getBoundingClientRect();
+    return mapEdit.containerPointToLatLng(L.point(touch.clientX - rect.left, touch.clientY - rect.top));
+  }
+  L.DomEvent.on(container, 'touchstart', function(e) {
+    if (!paintActive) return;
+    L.DomEvent.preventDefault(e);
+    lastPaintLatLng = getTouchLatLng(e);
+    if (!isPainting) {
+      isPainting = true; paintedThisStroke = {};
+      var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
+      undoStack.push(snap); if (undoStack.length > 200) undoStack.shift();
+      document.getElementById('paintUndoBtn').disabled = false;
+      nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+    }
+  });
+  L.DomEvent.on(container, 'touchmove', function(e) {
+    if (!paintActive || !isPainting) return;
+    L.DomEvent.preventDefault(e);
+    lastPaintLatLng = getTouchLatLng(e);
+  });
+  L.DomEvent.on(container, 'touchend', stopPainting);
+  L.DomEvent.on(container, 'touchcancel', stopPainting);
+
+  mapEdit.fitBounds(gridLayerEdit.getBounds());
+  setTimeout(function() { mapEdit.invalidateSize({animate:false}); }, 100);
+  setTimeout(function() {
+    mapEdit.invalidateSize({animate:false});
+    if (gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds());
+  }, 400);
+
+  document.getElementById('paintUndoBtn').disabled = true;
+}
+
 // ── Screen 0 / 1 / 2 navigation ──────────────────────────────────────────
 document.getElementById('startBtn').addEventListener('click', function() {
   document.getElementById('screen0').classList.remove('active');
