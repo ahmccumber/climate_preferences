@@ -307,7 +307,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
            the suitability of specific areas. Switch between Raise and Lower using the toolbar.</p>
         <!-- Animation canvas -->
         <div style="border:1px solid #dde1e7;border-radius:8px;overflow:hidden;margin-bottom:14px;background:#f0f4f8;">
-          <canvas id="paintDemoCanvas" style="display:block;width:100%;"></canvas>
+          <canvas id="paintDemoCanvas" style="display:block;"></canvas>
         </div>
         <button class="btn btn-primary" id="startEditingBtn">Start Editing &#8594;</button>
       </div>
@@ -416,12 +416,14 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     var canvas = document.getElementById('paintDemoCanvas');
     if (!canvas) return;
 
-    // Size canvas from its actual rendered width
-    var parent = canvas.parentElement;
-    var pw = parent ? parent.offsetWidth : 440;
-    if (pw < 10) pw = 440;
-    canvas.width  = pw - 2;           // -2 for border
-    canvas.height = Math.round(canvas.width * 0.52);
+    // Compute canvas width from window — avoids measuring hidden/zero-width parents
+    // instructions-box is min(500px, 92vw) with 30px padding each side = -60px
+    var boxW = Math.min(500, window.innerWidth * 0.92);
+    var cw   = Math.max(200, boxW - 64);  // subtract box padding (30+36 = 66 ≈ 64)
+    canvas.width  = Math.round(cw);
+    canvas.height = Math.round(cw * 0.52);
+    canvas.style.width  = canvas.width  + 'px';
+    canvas.style.height = canvas.height + 'px';
 
     if (animRunning) return;
     animRunning = true;
@@ -605,7 +607,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     new MutationObserver(function() {
       if (instr.classList.contains('visible') && !animRunning) {
         // Defer one frame so the canvas has laid out and has a real offsetWidth
-        setTimeout(startAnimation, 50);
+        setTimeout(startAnimation, 120);
       }
     }).observe(instr, {attributes:true, attributeFilter:['class']});
   }
