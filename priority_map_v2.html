@@ -329,482 +329,113 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 // ── Paint demo animation ─────────────────────────────────────────────────
 (function() {
-  var animRunning = false;
-  var startTime = null;
-  var TOTAL_DURATION = 5200;
+  var COLS=22,ROWS=10,TOOLBAR_H=40,TOTAL=5200;
+  var scores=[],startTime=null,animRunning=false;
 
-  var COLS = 22, ROWS = 10, TOOLBAR_H = 40;
-  var scores = [];
-
-  function initScores() {
-    scores = [];
-    for (var r = 0; r < ROWS; r++) {
-      scores[r] = [];
-      for (var c = 0; c < COLS; c++) {
-        var base = 0.2 + (c / COLS) * 0.55 + (Math.random() - 0.5) * 0.15;
-        scores[r][c] = Math.max(0.05, Math.min(0.95, base));
-      }
-    }
+  function initScores(){
+    scores=[];
+    for(var r=0;r<ROWS;r++){scores[r]=[];for(var c=0;c<COLS;c++){var v=0.2+(c/COLS)*0.55+(Math.random()-.5)*.15;scores[r][c]=Math.max(.05,Math.min(.95,v));}}
   }
   initScores();
 
-  var STOPS = [
-    [0.0,  [215, 25,  28]],
-    [0.25, [253, 174, 97]],
-    [0.5,  [255, 255, 191]],
-    [0.75, [171, 217, 233]],
-    [1.0,  [44,  123, 182]]
-  ];
-  function scoreColor(t) {
-    t = Math.max(0, Math.min(1, t));
-    for (var i = 1; i < STOPS.length; i++) {
-      if (t <= STOPS[i][0]) {
-        var lo = STOPS[i-1], hi = STOPS[i];
-        var f  = (t - lo[0]) / (hi[0] - lo[0]);
-        return 'rgb(' +
-          Math.round(lo[1][0] + f*(hi[1][0]-lo[1][0])) + ',' +
-          Math.round(lo[1][1] + f*(hi[1][1]-lo[1][1])) + ',' +
-          Math.round(lo[1][2] + f*(hi[1][2]-lo[1][2])) + ')';
-      }
-    }
-    return 'rgb(44,123,182)';
+  var STOPS=[[0,[215,25,28]],[.25,[253,174,97]],[.5,[255,255,191]],[.75,[171,217,233]],[1,[44,123,182]]];
+  function color(t){t=Math.max(0,Math.min(1,t));for(var i=1;i<STOPS.length;i++){if(t<=STOPS[i][0]){var lo=STOPS[i-1],hi=STOPS[i],f=(t-lo[0])/(hi[0]-lo[0]);return'rgb('+Math.round(lo[1][0]+f*(hi[1][0]-lo[1][0]))+','+Math.round(lo[1][1]+f*(hi[1][1]-lo[1][1]))+','+Math.round(lo[1][2]+f*(hi[1][2]-lo[1][2]))+')';}}return'rgb(44,123,182)';}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function ease(t){return t<.5?2*t*t:-1+(4-2*t)*t;}
+  function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
+  var raisePath=[{t:0,cx:.12,cr:.35},{t:.33,cx:.38,cr:.50},{t:.66,cx:.62,cr:.42},{t:1,cx:.85,cr:.60}];
+  var lowerPath=[{t:0,cx:.85,cr:.58},{t:.33,cx:.60,cr:.45},{t:.66,cx:.35,cr:.55},{t:1,cx:.12,cr:.38}];
+  function interp(path,p){p=Math.max(0,Math.min(1,p));for(var i=1;i<path.length;i++){if(p<=path[i].t){var f=(p-path[i-1].t)/(path[i].t-path[i-1].t);return{cx:lerp(path[i-1].cx,path[i].cx,f),cr:lerp(path[i-1].cr,path[i].cr,f)};}}return{cx:path[path.length-1].cx,cr:path[path.length-1].cr};}
+
+  function applyBrush(cellW,cellH,bx,by,mode){
+    var rad=cellW*2.5;
+    for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){var px=(c+.5)*cellW,py=TOOLBAR_H+(r+.5)*cellH,d=Math.sqrt((px-bx)*(px-bx)+(py-by)*(py-by));if(d<rad){var s=(1-d/rad)*.022;scores[r][c]=mode==='raise'?Math.min(.95,scores[r][c]+s):Math.max(.05,scores[r][c]-s);}}
   }
 
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
+  function frame(ts){
+    if(!animRunning) return;
+    var canvas=document.getElementById('paintDemoCanvas');
+    if(!canvas){animRunning=false;return;}
 
-  function lerp(a, b, t) { return a + (b - a) * t; }
-  function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
-
-  var raisePath = [
-    {t:0.00, cx:0.12, cr:0.35},
-    {t:0.33, cx:0.38, cr:0.50},
-    {t:0.66, cx:0.62, cr:0.42},
-    {t:1.00, cx:0.85, cr:0.60}
-  ];
-  var lowerPath = [
-    {t:0.00, cx:0.85, cr:0.58},
-    {t:0.33, cx:0.60, cr:0.45},
-    {t:0.66, cx:0.35, cr:0.55},
-    {t:1.00, cx:0.12, cr:0.38}
-  ];
-
-  function interpPath(path, pct) {
-    pct = Math.max(0, Math.min(1, pct));
-    for (var i = 1; i < path.length; i++) {
-      if (pct <= path[i].t) {
-        var f = (pct - path[i-1].t) / (path[i].t - path[i-1].t);
-        return {cx: lerp(path[i-1].cx, path[i].cx, f),
-                cr: lerp(path[i-1].cr, path[i].cr, f)};
-      }
-    }
-    var l = path[path.length-1]; return {cx:l.cx, cr:l.cr};
-  }
-
-  function startAnimation() {
-    var canvas = document.getElementById('paintDemoCanvas');
-    if (!canvas) return;
-
-    // Compute canvas width from window — avoids measuring hidden/zero-width parents
-    // instructions-box is min(500px, 92vw) with 30px padding each side = -60px
-    var boxW = Math.min(500, window.innerWidth * 0.92);
-    var cw   = Math.max(200, boxW - 64);  // subtract box padding (30+36 = 66 ≈ 64)
-    canvas.width  = Math.round(cw);
-    canvas.height = Math.round(cw * 0.52);
-    canvas.style.width  = canvas.width  + 'px';
-    canvas.style.height = canvas.height + 'px';
-
-    animRunning = true;
-    startTime = null;
-    initScores();
-    requestAnimationFrame(frame);
-  }
-
-  function frame(ts) {
-    var canvas = document.getElementById('paintDemoCanvas');
-    if (!canvas || !document.getElementById('editInstructions').classList.contains('visible')) {
-      animRunning = false;
+    // Size canvas on every frame from its wrapper — works once wrapper is visible
+    var wrap=canvas.parentElement;
+    var W=wrap.offsetWidth-2;
+    if(W<10){
+      // Still not laid out — try again next frame
+      requestAnimationFrame(frame);
       return;
     }
+    var H=Math.round(W*.52);
+    if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
 
-    if (!startTime) startTime = ts;
-    var elapsed = (ts - startTime) % TOTAL_DURATION;
-    var pct = elapsed / TOTAL_DURATION;
+    var ctx=canvas.getContext('2d');
+    var cellW=W/COLS,cellH=(H-TOOLBAR_H)/ROWS;
+    var BTN_W=70,BTN_H=26,BTN_Y=7,raiseX=W/2-BTN_W-5,lowerX=W/2+5;
 
-    var W = canvas.width, H = canvas.height;
-    var cellW = W / COLS, cellH = (H - TOOLBAR_H) / ROWS;
-    var BTN_W = 70, BTN_H = 26, BTN_Y = 7;
-    var raiseX = W/2 - BTN_W - 5;
-    var lowerX = W/2 + 5;
+    if(!startTime) startTime=ts;
+    var pct=((ts-startTime)%TOTAL)/TOTAL;
+    ctx.clearRect(0,0,W,H);
 
-    var ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, W, H);
-
-    function drawGrid() {
-      for (var r = 0; r < ROWS; r++) {
-        for (var c = 0; c < COLS; c++) {
-          ctx.fillStyle = scoreColor(scores[r][c]);
-          ctx.fillRect(c*cellW+0.5, TOOLBAR_H+r*cellH+0.5, cellW-1, cellH-1);
-        }
-      }
+    function drawGrid(){for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){ctx.fillStyle=color(scores[r][c]);ctx.fillRect(c*cellW+.5,TOOLBAR_H+r*cellH+.5,cellW-1,cellH-1);}}
+    function drawBar(active){
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,W,TOOLBAR_H);
+      ctx.fillStyle='#dde1e7';ctx.fillRect(0,TOOLBAR_H-1,W,1);
+      ctx.fillStyle='#666';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText('Paint mode:',10,TOOLBAR_H/2);
+      [['▲ Raise',raiseX,active==='raise'],['▼ Lower',lowerX,active==='lower']].forEach(function(b){
+        rr(ctx,b[1],BTN_Y,BTN_W,BTN_H,4);
+        ctx.fillStyle=b[2]?'#2c3e50':'#f8f8f8';ctx.fill();
+        ctx.strokeStyle=b[2]?'#2c3e50':'#ccc';ctx.lineWidth=1;ctx.stroke();
+        ctx.fillStyle=b[2]?'#fff':'#333';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(b[0],b[1]+BTN_W/2,BTN_Y+BTN_H/2);
+      });
     }
-
-    function drawToolbar(activeMode) {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, W, TOOLBAR_H);
-      ctx.fillStyle = '#dde1e7';
-      ctx.fillRect(0, TOOLBAR_H-1, W, 1);
-
-      ctx.fillStyle = '#666';
-      ctx.font = '11px system-ui,sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('Paint mode:', 10, TOOLBAR_H/2);
-
-      function drawBtn(x, label, active) {
-        roundRect(ctx, x, BTN_Y, BTN_W, BTN_H, 4);
-        ctx.fillStyle = active ? '#2c3e50' : '#f8f8f8';
-        ctx.fill();
-        ctx.strokeStyle = active ? '#2c3e50' : '#ccc';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = active ? '#fff' : '#333';
-        ctx.font = 'bold 12px system-ui,sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, x + BTN_W/2, BTN_Y + BTN_H/2);
-      }
-      drawBtn(raiseX, '\u25b2 Raise', activeMode === 'raise');
-      drawBtn(lowerX, '\u25bc Lower', activeMode === 'lower');
+    function drawBrush(bx,by,mode,al){
+      var rad=cellW*2.5;
+      ctx.beginPath();ctx.arc(bx,by,rad,0,Math.PI*2);
+      ctx.strokeStyle='rgba(44,62,80,'+al*.85+')';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.beginPath();ctx.arc(bx,by,rad,0,Math.PI*2);
+      ctx.fillStyle=mode==='raise'?'rgba(44,123,182,'+al*.15+')':'rgba(215,25,28,'+al*.15+')';ctx.fill();
     }
-
-    function drawBrush(bx, by, mode, alpha) {
-      var radius = cellW * 2.5;
-      ctx.beginPath();
-      ctx.arc(bx, by, radius, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(44,62,80,' + (alpha*0.85) + ')';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4,3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.arc(bx, by, radius, 0, Math.PI*2);
-      ctx.fillStyle = mode === 'raise'
-        ? 'rgba(44,123,182,' + (alpha*0.15) + ')'
-        : 'rgba(215,25,28,'  + (alpha*0.15) + ')';
-      ctx.fill();
-    }
-
-    function drawCursor(cx, cy, pressing) {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.fillStyle = '#fff';
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0,0); ctx.lineTo(0,14); ctx.lineTo(3.5,10.5);
-      ctx.lineTo(5.5,15); ctx.lineTo(7,14.3); ctx.lineTo(5,9.5);
-      ctx.lineTo(9,9.5); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      if (pressing) {
-        ctx.beginPath();
-        ctx.arc(2,2,3,0,Math.PI*2);
-        ctx.fillStyle = 'rgba(44,62,80,0.35)';
-        ctx.fill();
-      }
+    function drawCursor(cx,cy,down){
+      ctx.save();ctx.translate(cx,cy);ctx.fillStyle='#fff';ctx.strokeStyle='#222';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,14);ctx.lineTo(3.5,10.5);ctx.lineTo(5.5,15);ctx.lineTo(7,14.3);ctx.lineTo(5,9.5);ctx.lineTo(9,9.5);ctx.closePath();ctx.fill();ctx.stroke();
+      if(down){ctx.beginPath();ctx.arc(2,2,3,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fill();}
       ctx.restore();
     }
 
-    function applyBrush(bx, by, mode, strength) {
-      var radius = cellW * 2.5;
-      for (var r = 0; r < ROWS; r++) {
-        for (var c = 0; c < COLS; c++) {
-          var px = (c+0.5)*cellW, py = TOOLBAR_H+(r+0.5)*cellH;
-          var d = Math.sqrt((px-bx)*(px-bx)+(py-by)*(py-by));
-          if (d < radius) {
-            var s = (1 - d/radius) * strength;
-            scores[r][c] = mode === 'raise'
-              ? Math.min(0.95, scores[r][c]+s)
-              : Math.max(0.05, scores[r][c]-s);
-          }
-        }
-      }
-    }
-
-    // Phase 0.00-0.38: raise
-    // Phase 0.38-0.52: cursor moves to Lower and clicks
-    // Phase 0.52-0.90: lower
-    // Phase 0.90-1.00: fade/reset
-
-    var brushX, brushY, brushAlpha, cursorX, cursorY;
-
-    if (pct < 0.38) {
-      var p = easeInOut(pct / 0.38);
-      var pos = interpPath(raisePath, p);
-      brushX = pos.cx * W;
-      brushY = TOOLBAR_H + pos.cr * (H - TOOLBAR_H);
-      brushAlpha = pct < 0.05 ? pct/0.05 : (pct > 0.34 ? (0.38-pct)/0.04 : 1);
-      applyBrush(brushX, brushY, 'raise', 0.022);
-      drawGrid(); drawToolbar('raise');
-      drawBrush(brushX, brushY, 'raise', brushAlpha);
-      drawCursor(brushX-7, brushY-5, true);
-
-    } else if (pct < 0.52) {
-      var tp  = (pct - 0.38) / 0.14;
-      var lp2 = interpPath(raisePath, 1);
-      var fromX = lp2.cx * W - 7, fromY = TOOLBAR_H + lp2.cr*(H-TOOLBAR_H) - 5;
-      var toX = lowerX + BTN_W*0.5 - 7, toY = BTN_Y + BTN_H*0.5 - 5;
-      var et = easeInOut(Math.min(1, tp * 1.5));
-      cursorX = lerp(fromX, toX, et);
-      cursorY = lerp(fromY, toY, et);
-      var clicked = tp > 0.65;
-      drawGrid(); drawToolbar(clicked ? 'lower' : 'raise');
-      drawCursor(cursorX, cursorY, clicked && tp < 0.92);
-
-    } else if (pct < 0.90) {
-      var lp = easeInOut((pct - 0.52) / 0.38);
-      var lpos = interpPath(lowerPath, lp);
-      brushX = lpos.cx * W;
-      brushY = TOOLBAR_H + lpos.cr * (H - TOOLBAR_H);
-      var la = (pct-0.52) < 0.05 ? (pct-0.52)/0.05 : (pct > 0.86 ? (0.90-pct)/0.04 : 1);
-      applyBrush(brushX, brushY, 'lower', 0.022);
-      drawGrid(); drawToolbar('lower');
-      drawBrush(brushX, brushY, 'lower', la);
-      drawCursor(brushX-7, brushY-5, true);
-
+    if(pct<0.38){
+      var p=ease(pct/0.38),pos=interp(raisePath,p),bx=pos.cx*W,by=TOOLBAR_H+pos.cr*(H-TOOLBAR_H);
+      var al=pct<.05?pct/.05:pct>.34?(0.38-pct)/.04:1;
+      applyBrush(cellW,cellH,bx,by,'raise');
+      drawGrid();drawBar('raise');drawBrush(bx,by,'raise',al);drawCursor(bx-7,by-5,true);
+    } else if(pct<0.52){
+      var tp=(pct-.38)/.14,lp=interp(raisePath,1);
+      var fx=lp.cx*W-7,fy=TOOLBAR_H+lp.cr*(H-TOOLBAR_H)-5,tx=lowerX+BTN_W*.5-7,ty=BTN_Y+BTN_H*.5-5;
+      var et=ease(Math.min(1,tp*1.5)),clicked=tp>.65;
+      drawGrid();drawBar(clicked?'lower':'raise');drawCursor(lerp(fx,tx,et),lerp(fy,ty,et),clicked&&tp<.92);
+    } else if(pct<0.90){
+      var lp2=ease((pct-.52)/.38),lpos=interp(lowerPath,lp2),lx=lpos.cx*W,ly=TOOLBAR_H+lpos.cr*(H-TOOLBAR_H);
+      var la=(pct-.52)<.05?(pct-.52)/.05:pct>.86?(0.90-pct)/.04:1;
+      applyBrush(cellW,cellH,lx,ly,'lower');
+      drawGrid();drawBar('lower');drawBrush(lx,ly,'lower',la);drawCursor(lx-7,ly-5,true);
     } else {
-      // Reset scores smoothly for next loop
-      var fade = (pct - 0.90) / 0.10;
-      drawGrid(); drawToolbar('lower');
-      var resetStr = easeInOut(fade) * 0.12;
-      for (var r2 = 0; r2 < ROWS; r2++) {
-        for (var c2 = 0; c2 < COLS; c2++) {
-          var base2 = 0.2 + (c2/COLS)*0.55;
-          scores[r2][c2] += (base2 - scores[r2][c2]) * resetStr;
-        }
-      }
-      if (fade > 0.95) initScores();
+      var fade=(pct-.90)/.10,rs=ease(fade)*.12;
+      drawGrid();drawBar('lower');
+      for(var r2=0;r2<ROWS;r2++)for(var c2=0;c2<COLS;c2++){scores[r2][c2]+=(0.2+(c2/COLS)*.55-scores[r2][c2])*rs;}
+      if(fade>.95) initScores();
     }
-
     requestAnimationFrame(frame);
   }
 
-  // startAnimation is called externally from goToEditBtn handler
-  window.startPaintDemo = startAnimation;
-})();
-
-</script>
-<script>
-
-// ── Hold-to-repeat for stepper buttons ───────────────────────────────────
-function makeHoldable(btn, fn) {
-  var holdTimer = null, holdInterval = null;
-  function start(e) {
-    e.preventDefault();
-    fn();
-    holdTimer = setTimeout(function() {
-      holdInterval = setInterval(fn, 60);
-    }, 400);
-  }
-  function stop() {
-    clearTimeout(holdTimer); clearInterval(holdInterval);
-    holdTimer = null; holdInterval = null;
-  }
-  btn.addEventListener('mousedown', start);
-  btn.addEventListener('touchstart', start, { passive: false });
-  btn.addEventListener('mouseup',   stop);
-  btn.addEventListener('mouseleave',stop);
-  btn.addEventListener('touchend',  stop);
-  btn.addEventListener('touchcancel',stop);
-}
-
-// ── Screens + Paint ──────────────────────────────────────────────────────
-document.getElementById('startBtn').addEventListener('click',function(){
-  document.getElementById('screen0').classList.remove('active');
-  document.getElementById('screen1').classList.add('active');
-});
-
-document.getElementById('proceedBtn').addEventListener('click',function(){
-  document.getElementById('screen1').classList.remove('active');
-  document.getElementById('screen2').classList.add('active');
-  document.getElementById('mapIntroModal').classList.add('visible');
-  setTimeout(function(){
-    renderMap();
-    // Snapshot pre-adjustment scores from current weights
-    if (geojsonData) {
-      preScores = {};
-      geojsonData.features.forEach(function(f) {
-        preScores[f.properties.cell_id] = parseFloat(computeComposite(f.properties).toFixed(4));
-      });
-    }
-  }, 50);
-});
-
-document.getElementById('modalOkBtn').addEventListener('click',function(){
-  document.getElementById('mapIntroModal').classList.remove('visible');
-});
-
-document.getElementById('backBtn').addEventListener('click',function(){
-  document.getElementById('screen2').classList.remove('active');
-  document.getElementById('screen1').classList.add('active');
-});
-
-// ── Paint / Edit ─────────────────────────────────────────────────────────
-var mapEdit = null, gridLayerEdit = null;
-var paintActive = false, isPainting = false, paintMode = 'raise';
-var brushRadiusKm = 50, lastPaintLatLng = null, paintInterval = null;
-var paintedThisStroke = {}, editedCells = {}, undoStack = [];
-var preScores = {};  // cell_id -> score, captured when user first sees map
-var paintMinS = 0, paintMaxS = 1, paintReady = false;
-
-function paintCellColor(score) {
-  var t = (paintMaxS > paintMinS) ? (score - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-  t = Math.max(0, Math.min(1, t));
-  return interpolateColor(t);
-}
-
-function recolorLayers(layers) {
-  var gl = gridLayerEdit;
-  if (!gl) return;
-  var fn = function(l) {
-    var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
-    l.setStyle({ fillColor: paintCellColor(s) });
+  window.startPaintDemo = function() {
+    animRunning = true;
+    startTime   = null;
+    initScores();
+    requestAnimationFrame(frame);
   };
-  if (layers) { layers.forEach(fn); } else { gl.eachLayer(fn); }
-}
-
-function cellsInBrush(latlng) {
-  var R = 6371, hits = [];
-  if (!gridLayerEdit) return hits;
-  gridLayerEdit.eachLayer(function(l) {
-    var c = l.getBounds().getCenter();
-    var dLat = (c.lat - latlng.lat) * Math.PI / 180;
-    var dLng = (c.lng - latlng.lng) * Math.PI / 180;
-    var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-    if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) <= brushRadiusKm) hits.push(l);
-  });
-  return hits;
-}
-
-function nudgeTick() {
-  if (!isPainting || !lastPaintLatLng) return;
-  var layers = cellsInBrush(lastPaintLatLng);
-  var changed = [];
-  layers.forEach(function(l) {
-    var cur = l._paintScore;
-    var next = paintMode === 'raise' ? Math.min(1, cur + 0.02) : Math.max(0, cur - 0.02);
-    if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
-  });
-  if (changed.length) recolorLayers(changed);
-}
-
-function stopPainting() {
-  if (isPainting) {
-    isPainting = false;
-    clearInterval(paintInterval); paintInterval = null;
-    paintedThisStroke = {};
-  }
-}
-
-function renderEditMap() {
-  paintReady = false;
-  if (mapEdit) { mapEdit.remove(); mapEdit = null; }
-  gridLayerEdit = null; editedCells = {}; undoStack = [];
-
-  mapEdit = L.map('mapEdit', {
-    zoomControl: true,
-    dragging: false,
-    tap: false,
-    touchZoom: false,
-    scrollWheelZoom: false,
-    doubleClickZoom: false,
-    boxZoom: false
-  }).setView([39.5, -98.35], 4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
-  }).addTo(mapEdit);
-
-  var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
-  paintMinS = Math.min.apply(null, scores);
-  paintMaxS = Math.max.apply(null, scores);
-
-  gridLayerEdit = L.geoJSON(geojsonData, {
-    style: function(feature) {
-      var raw = computeComposite(feature.properties);
-            var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
-      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5, stroke: true };
-    },
-    onEachFeature: function(feature, layer) {
-      layer.on('mousedown', function(e) {
-        if (!paintActive) return;
-        L.DomEvent.stopPropagation(e);
-        if (!isPainting) {
-          isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
-          var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-          undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-          document.getElementById('paintUndoBtn').disabled = false;
-          nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
-        }
-      });
-      layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
-      layer.on('mouseup', stopPainting);
-    }
-  }).addTo(mapEdit);
-
-  gridLayerEdit.eachLayer(function(l) {
-    l._paintScore = computeComposite(l.feature.properties);
-    l._baseScore  = l._paintScore;
-  });
-
-  mapEdit.on('mouseup', stopPainting);
-  document.addEventListener('mouseup', stopPainting);
-
-  // Touch support for paint brush via L.DomEvent
-  var container = mapEdit.getContainer();
-  function getTouchLatLng(e) {
-    var touch = e.touches[0] || e.changedTouches[0];
-    var rect = container.getBoundingClientRect();
-    return mapEdit.containerPointToLatLng(
-      L.point(touch.clientX - rect.left, touch.clientY - rect.top));
-  }
-  L.DomEvent.on(container, 'touchstart', function(e) {
-    if (!paintActive) return;
-    L.DomEvent.preventDefault(e);
-    lastPaintLatLng = getTouchLatLng(e);
-    if (!isPainting) {
-      isPainting = true; paintedThisStroke = {};
-      var _snap = {}; gridLayerEdit.eachLayer(function(l) { _snap[l._leaflet_id] = l._paintScore; });
-      undoStack.push(_snap); if (undoStack.length > 200) undoStack.shift();
-      document.getElementById('paintUndoBtn').disabled = false;
-      nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
-    }
-  });
-  L.DomEvent.on(container, 'touchmove', function(e) {
-    if (!paintActive || !isPainting) return;
-    L.DomEvent.preventDefault(e);
-    lastPaintLatLng = getTouchLatLng(e);
-  });
-  L.DomEvent.on(container, 'touchend', stopPainting);
-  L.DomEvent.on(container, 'touchcancel', stopPainting);
-
-  mapEdit.fitBounds(gridLayerEdit.getBounds());
-  setTimeout(function(){ mapEdit.invalidateSize({animate:false}); }, 100);
-  setTimeout(function(){ mapEdit.invalidateSize({animate:false}); if(gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds()); }, 400);
-
-  paintReady = true;
-  document.getElementById('paintUndoBtn').disabled = true;
-}
+})();
 
 // ── Screen 3 navigation ───────────────────────────────────────────────────
 document.getElementById('startEditingBtn').addEventListener('click', function() {
