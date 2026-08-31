@@ -443,6 +443,24 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 var isEmbedded = window.self !== window.top;
 var BUDGET = 100;
 
+// ── Hold-to-repeat for stepper buttons ───────────────────────────────────
+function makeHoldable(btn, fn) {
+  if (!btn) return;
+  var holdTimer = null, holdInterval = null;
+  function start(e) {
+    e.preventDefault();
+    fn();
+    holdTimer = setTimeout(function() { holdInterval = setInterval(fn, 60); }, 400);
+  }
+  function stop() { clearTimeout(holdTimer); clearInterval(holdInterval); }
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('mouseup',    stop);
+  btn.addEventListener('mouseleave', stop);
+  btn.addEventListener('touchend',   stop);
+  btn.addEventListener('touchcancel',stop);
+}
+
 // ── Variable definitions ──────────────────────────────────────────────────
 // direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
 var HAZARDS = [
