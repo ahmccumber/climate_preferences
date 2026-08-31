@@ -425,7 +425,6 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     canvas.style.width  = canvas.width  + 'px';
     canvas.style.height = canvas.height + 'px';
 
-    if (animRunning) return;
     animRunning = true;
     startTime = null;
     initScores();
@@ -601,16 +600,8 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     requestAnimationFrame(frame);
   }
 
-  // Start when overlay becomes visible
-  var instr = document.getElementById('editInstructions');
-  if (instr) {
-    new MutationObserver(function() {
-      if (instr.classList.contains('visible') && !animRunning) {
-        // Defer one frame so the canvas has laid out and has a real offsetWidth
-        setTimeout(startAnimation, 120);
-      }
-    }).observe(instr, {attributes:true, attributeFilter:['class']});
-  }
+  // startAnimation is called externally from goToEditBtn handler
+  window.startPaintDemo = startAnimation;
 })();
 
 </script>
@@ -830,6 +821,12 @@ document.getElementById('goToEditBtn').addEventListener('click', function() {
   document.getElementById('paintToolbar').classList.remove('visible');
   document.getElementById('mapEdit').classList.remove('paint-mode');
   paintActive = false;
+  // Start demo animation — double rAF ensures screen3 is painted and laid out
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      if (window.startPaintDemo) window.startPaintDemo();
+    });
+  });
   function tryRender() {
     if (!geojsonData) { setTimeout(tryRender, 100); return; }
     requestAnimationFrame(function() { setTimeout(renderEditMap, 50); });
