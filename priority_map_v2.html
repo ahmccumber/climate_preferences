@@ -292,8 +292,11 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
       <span style="font-size:11px;color:#999">Lg</span>
       <div id="brushPreview" style="width:18px;height:18px;border-radius:50%;background:rgba(44,62,80,0.25);border:2px solid #2c3e50;flex-shrink:0"></div>
     </div>
-      <button class="tool-btn active" id="paintRaiseBtn">&#9650; Raise</button>
-      <button class="tool-btn" id="paintLowerBtn">&#9660; Lower</button>
+      <button class="tool-btn" id="panModeBtn" style="display:flex;align-items:center;gap:5px;"><span>&#10021;</span> Pan</button>
+      <div id="paintBtns" style="display:flex;gap:6px;">
+        <button class="tool-btn active" id="paintRaiseBtn">&#9650; Raise</button>
+        <button class="tool-btn" id="paintLowerBtn">&#9660; Lower</button>
+      </div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="tool-btn" id="paintUndoBtn" disabled>&#8617; Undo</button>
       <button class="tool-btn" id="paintResetBtn">&#8635; Reset</button>
@@ -945,7 +948,7 @@ function renderMap() {
 
 // ── Paint engine ─────────────────────────────────────────────────────────
 var mapEdit = null, gridLayerEdit = null;
-var paintActive = false, isPainting = false, paintMode = 'raise';
+var paintActive = false, isPainting = false, paintMode = 'raise', panMode = false;
 var brushRadiusKm = 50, lastPaintLatLng = null, paintInterval = null;
 var paintedThisStroke = {}, editedCells = {}, undoStack = [];
 var paintMinS = 0, paintMaxS = 1;
@@ -1126,7 +1129,11 @@ document.getElementById('startEditingBtn').addEventListener('click', function() 
   document.getElementById('editInstructions').classList.remove('visible');
   document.getElementById('paintToolbar').classList.add('visible');
   document.getElementById('mapEdit').classList.add('paint-mode');
+  panMode = false;
   paintActive = true;
+  document.getElementById('panModeBtn').classList.remove('active');
+  document.getElementById('paintBtns').style.opacity = '1';
+  document.getElementById('paintBtns').style.pointerEvents = '';
 });
 
 document.getElementById('goToEditBtn').addEventListener('click', function() {
@@ -1150,11 +1157,37 @@ document.getElementById('goToEditBtn').addEventListener('click', function() {
 });
 
 document.getElementById('backToMapBtn').addEventListener('click', function() {
-  stopPainting(); paintActive = false;
+  stopPainting(); paintActive = false; panMode = false;
+  document.getElementById('panModeBtn').classList.remove('active');
   document.getElementById('mapEdit').classList.remove('paint-mode');
   document.getElementById('screen3').classList.remove('active');
   document.getElementById('screen2').classList.add('active');
   setTimeout(function(){ if(map) map.invalidateSize(); }, 60);
+});
+
+document.getElementById('panModeBtn').addEventListener('click', function() {
+  panMode = !panMode;
+  this.classList.toggle('active', panMode);
+  // Show/hide paint buttons
+  document.getElementById('paintBtns').style.opacity = panMode ? '0.4' : '1';
+  document.getElementById('paintBtns').style.pointerEvents = panMode ? 'none' : '';
+  // Show/hide brush controls
+  document.getElementById('brushSizeSlider').parentElement.style.opacity = panMode ? '0.4' : '1';
+  if (mapEdit) {
+    if (panMode) {
+      paintActive = false;
+      mapEdit.dragging.enable();
+      mapEdit.scrollWheelZoom.enable();
+      mapEdit.touchZoom.enable();
+      document.getElementById('mapEdit').classList.remove('paint-mode');
+    } else {
+      paintActive = true;
+      mapEdit.dragging.disable();
+      mapEdit.scrollWheelZoom.disable();
+      mapEdit.touchZoom.disable();
+      document.getElementById('mapEdit').classList.add('paint-mode');
+    }
+  }
 });
 
 document.getElementById('paintRaiseBtn').addEventListener('click', function() {
