@@ -1263,7 +1263,18 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     autoAdvance: true
   };
 
-  window.parent.postMessage(payload, '*');
+  // Debug: log what we're sending
+  console.log('[MAP] posting message:', JSON.stringify(payload).slice(0, 200));
+  console.log('[MAP] parent origin:', document.referrer);
+
+  // Try postMessage to parent
+  try {
+    window.parent.postMessage(payload, '*');
+    console.log('[MAP] postMessage sent');
+  } catch(e) {
+    console.error('[MAP] postMessage failed:', e);
+  }
+
   btn.textContent = 'Saved ✓';
 });
 
