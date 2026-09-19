@@ -112,7 +112,7 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
 #screen1 .body{flex:1;overflow-y:auto;padding:20px 28px 10px;}
 
 /* ── Screen 0 ── */
-#screen0{background:#f7f8fa;justify-content:center;align-items:center;}
+#screen0,#screen2b{background:#f7f8fa;justify-content:center;align-items:center;}
 .landing-card{background:white;border-radius:14px;padding:48px 52px;max-width:620px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,0.10);text-align:center;}
 .landing-card h1{font-size:26px;color:#2c3e50;margin-bottom:14px;}
 .landing-card p{font-size:15px;color:#555;line-height:1.7;margin-bottom:14px;}
@@ -278,6 +278,26 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
   </div>
 </div>
 
+<!-- SCREEN 2B: Instructions before fine-tuning -->
+<div class="screen" id="screen2b">
+  <div class="landing-card">
+    <h1>Before You Fine-Tune Your Map</h1>
+    <p>The map you just saw was generated entirely from the point allocations you made,
+      so it only reflects the factors we asked about.</p>
+    <p>Take a moment to think about it. <strong>Does this map match where you would actually
+      want to live?</strong> Are there specific regions that look better or worse than you
+      would expect, given your preferences?</p>
+    <p>On the next page, you will be able to paint adjustments directly onto the map.
+      <strong>Raise</strong> areas that you would rate higher than the map does, and
+      <strong>lower</strong> areas that you would rate lower. Even small changes are helpful.
+      If the map already matches your preferences well, you can submit it as is.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn btn-primary" id="backToMapFrom2bBtn">&larr; Back to My Map</button>
+      <button class="btn btn-success" id="continueToEditBtn">Continue to Edit My Map &rarr;</button>
+    </div>
+  </div>
+</div>
+
 <!-- SCREEN 3 -->
 <div class="screen" id="screen3">
   <div class="header">
@@ -326,6 +346,20 @@ input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
     <p>Use <strong>&ldquo;&#8592; Adjust Priorities&rdquo;</strong> to go back and revise your point allocations at any time &mdash; the map will update automatically.</p>
     <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to paint adjustments onto specific areas directly on the map.</p>
     <button class="btn btn-primary" id="modalOkBtn">View My Map &rarr;</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="noEditsModal">
+  <div class="modal-box">
+    <h2>You haven&rsquo;t made any edits</h2>
+    <p>You haven&rsquo;t changed anything on the map yet. Take another look: does it match
+      where you would actually want to live? If any areas look too high or too low, you can
+      paint adjustments now.</p>
+    <p>If the map already matches your preferences, you can submit it as is.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="noEditsGoBackBtn">Go Back and Edit</button>
+      <button class="btn btn-success" id="noEditsSubmitBtn">Submit Without Edits</button>
+    </div>
   </div>
 </div>
 
@@ -1109,7 +1143,7 @@ document.getElementById('proceedBtn').addEventListener('click', function() {
     if (geojsonData) {
       preScores = {};
       geojsonData.features.forEach(function(f) {
-        preScores[f.properties.cell_id] = parseFloat(computeComposite(f.properties).toFixed(4));
+        preScores[f.properties.poly_id] = parseFloat(computeComposite(f.properties).toFixed(4));
       });
     }
   }, 50);
@@ -1138,6 +1172,17 @@ document.getElementById('startEditingBtn').addEventListener('click', function() 
 
 document.getElementById('goToEditBtn').addEventListener('click', function() {
   document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen2b').classList.add('active');
+});
+
+document.getElementById('backToMapFrom2bBtn').addEventListener('click', function() {
+  document.getElementById('screen2b').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  setTimeout(function(){ if(map) map.invalidateSize(); }, 60);
+});
+
+document.getElementById('continueToEditBtn').addEventListener('click', function() {
+  document.getElementById('screen2b').classList.remove('active');
   document.getElementById('screen3').classList.add('active');
   document.getElementById('editInstructions').classList.add('visible');
   document.getElementById('paintToolbar').classList.remove('visible');
@@ -1226,8 +1271,32 @@ document.getElementById('paintResetBtn').addEventListener('click', function() {
   editedCells = {}; recolorLayers(null);
 });
 
+var noEditsConfirmed = false;
+
+document.getElementById('noEditsGoBackBtn').addEventListener('click', function() {
+  noEditsConfirmed = false;
+  document.getElementById('noEditsModal').classList.remove('visible');
+});
+
+document.getElementById('noEditsSubmitBtn').addEventListener('click', function() {
+  noEditsConfirmed = true;
+  document.getElementById('noEditsModal').classList.remove('visible');
+  document.getElementById('submitBtn').click();
+});
+
 document.getElementById('submitBtn').addEventListener('click', function() {
   var btn = this;
+
+  // Warn (once) if the respondent has not edited anything
+  var nEdited = 0;
+  if (gridLayerEdit) {
+    gridLayerEdit.eachLayer(function(l) { if (editedCells[l._leaflet_id]) nEdited++; });
+  }
+  if (nEdited === 0 && !noEditsConfirmed) {
+    document.getElementById('noEditsModal').classList.add('visible');
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
@@ -1244,9 +1313,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
   var editedList = [];
   if (gridLayerEdit) {
     gridLayerEdit.eachLayer(function(l) {
-      var cid = l.feature.properties.cell_id;
+      var cid = l.feature.properties.poly_id;
       if (editedCells[l._leaflet_id]) {
-        editedList.push({ cell_id: cid, post_score: parseFloat(l._paintScore.toFixed(4)) });
+        editedList.push({ poly_id: cid, post_score: parseFloat(l._paintScore.toFixed(4)) });
       }
     });
   }
