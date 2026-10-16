@@ -1327,15 +1327,44 @@ document.getElementById('submitBtn').addEventListener('click', function() {
   wv.extreme_cold = weatherWeights.extreme_cold;
 
   // Build edited-cells list (post scores only for cells that were manually changed)
+  // Compact [poly_id, post_score] pairs (not {poly_id:..., post_score:...} objects) to
+  // keep each chunk small -- dropping the repeated key names roughly halves bytes/cell.
   var editedList = [];
   if (gridLayerEdit) {
     gridLayerEdit.eachLayer(function(l) {
       var cid = l.feature.properties.poly_id;
       if (editedCells[l._leaflet_id]) {
-        editedList.push({ poly_id: cid, post_score: parseFloat(l._paintScore.toFixed(4)) });
+        editedList.push([cid, parseFloat(l._paintScore.toFixed(3))]);
       }
     });
   }
+
+  // Qualtrics embedded data fields cap out at 20,000 bytes each, and a respondent
+  // could in principle paint most or all of the grid. Rather than limiting how much
+  // they can edit, split the edited-cell list across as many map_edited_cells_N
+  // fields as needed (see the question's "Edit Question JavaScript" for the Qualtrics
+  // side, which writes however many chunks it receives). EDITED_CHUNK_BYTES is kept
+  // well under 20,000 to leave margin for JSON.stringify overhead and other fields
+  // saved in the same request.
+  var EDITED_CHUNK_BYTES = 15000;
+  function chunkEditedCells(list, maxBytes) {
+    var chunks = [], current = [], currentBytes = 2; // 2 for the wrapping [ ]
+    for (var i = 0; i < list.length; i++) {
+      var entryStr = JSON.stringify(list[i]);
+      var addBytes = entryStr.length + (current.length > 0 ? 1 : 0); // +1 for the comma
+      if (currentBytes + addBytes > maxBytes && current.length > 0) {
+        chunks.push(current);
+        current = [list[i]];
+        currentBytes = 2 + entryStr.length;
+      } else {
+        current.push(list[i]);
+        currentBytes += addBytes;
+      }
+    }
+    if (current.length > 0) chunks.push(current);
+    return chunks;
+  }
+  var editedChunks = chunkEditedCells(editedList, EDITED_CHUNK_BYTES);
 
   var payload = {
     type: 'priorityMapData',
@@ -1344,7 +1373,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     political_alignment: politicsAlignment,
     weather_heat_direction: weatherDirections.extreme_heat,
     weather_cold_direction: weatherDirections.extreme_cold,
-    edited_cells: editedList,   // sparse: only manually painted cells
+    edited_chunks: editedChunks, // sparse: only manually painted cells, split into byte-safe chunks
+    n_edited: editedList.length, // total edited-cell count, independent of how many chunks it took
     // pre-scores fully reconstructable from weights + grid in R
     autoAdvance: true
   };
