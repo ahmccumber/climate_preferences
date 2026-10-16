@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Climate Migration Priorities</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f8;min-height:100vh;}
+
+.screen{display:none;flex-direction:column;height:100vh;}
+.screen.active{display:flex;}
+
+.header{background:#2c3e50;color:white;padding:18px 28px;flex-shrink:0;}
+.header h1{font-size:20px;font-weight:600;margin-bottom:3px;}
+.header p{font-size:13px;opacity:0.8;}
+
+/* ── Budget bar ── */
+.budget-bar-wrap{background:white;border-radius:8px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);position:sticky;top:0;z-index:100;}
+.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.budget-label{font-size:14px;font-weight:600;color:#2c3e50;}
+.budget-remaining{font-size:22px;font-weight:700;color:#2980b9;}
+.budget-remaining.zero{color:#27ae60;}
+.budget-track{height:10px;background:#ecf0f1;border-radius:5px;overflow:hidden;}
+.budget-fill{height:100%;background:#2980b9;border-radius:5px;transition:width 0.2s,background 0.2s;}
+.budget-fill.zero{background:#27ae60;}
+.budget-subtext{font-size:12px;color:#7f8c8d;margin-top:6px;}
+
+/* ── Section headers ── */
+.section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#7f8c8d;margin:20px 0 10px;}
+
+/* ── Factor cards ── */
+.factors-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:680px){.factors-grid{grid-template-columns:1fr;}}
+.factor-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;}
+.factor-card.has-points{border-color:#2980b9;}
+.factor-card.disabled-card{opacity:0.45;pointer-events:none;}
+.factor-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.factor-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.factor-points{font-size:20px;font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.factor-desc{font-size:12px;color:#7f8c8d;margin-bottom:10px;line-height:1.4;}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#ecf0f1;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#2980b9;cursor:pointer;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+input[type=range]:disabled{opacity:0.35;cursor:not-allowed;}
+input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
+
+/* ── Special: urbanization card ── */
+.urban-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;grid-column:1/-1;}
+.urban-card.has-points{border-color:#2980b9;}
+.urban-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.urban-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.urban-pts{font-size:20px;font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.urban-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
+.urban-choices{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.urban-choice{flex:1;min-width:100px;padding:9px 12px;border:2px solid #dde1e7;border-radius:6px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:#5a6c7d;transition:all 0.15s;background:white;}
+.urban-choice:hover{border-color:#2980b9;color:#2980b9;}
+.urban-choice.selected{border-color:#2980b9;background:#2980b9;color:white;}
+
+/* ── Special: politics card ── */
+.politics-card{background:white;border-radius:8px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border:2px solid transparent;transition:border-color 0.2s;grid-column:1/-1;}
+.politics-card.has-points{border-color:#2980b9;}
+.politics-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.politics-name{font-size:14px;font-weight:600;color:#2c3e50;}
+.politics-desc{font-size:12px;color:#7f8c8d;margin-bottom:12px;line-height:1.4;}
+.politics-choices{display:flex;gap:10px;margin-bottom:14px;}
+.politics-choice{flex:1;padding:9px 12px;border:2px solid #dde1e7;border-radius:6px;cursor:pointer;text-align:center;font-size:13px;font-weight:600;color:#5a6c7d;transition:all 0.15s;background:white;}
+.politics-choice:hover{border-color:#8e44ad;color:#8e44ad;}
+.politics-choice.selected{border-color:#8e44ad;background:#8e44ad;color:white;}
+.politics-sliders{display:none;gap:14px;flex-direction:column;}
+.politics-sliders.visible{display:flex;}
+.pol-slider-row{display:flex;flex-direction:column;gap:4px;}
+.pol-slider-label{display:flex;justify-content:space-between;align-items:center;}
+.pol-slider-name{font-size:13px;font-weight:600;color:#2c3e50;}
+.pol-slider-pts{font-size:16px;font-weight:700;color:#8e44ad;}
+.pol-slider-sub{font-size:11px;color:#7f8c8d;margin-bottom:4px;}
+input[type=range].purple::-webkit-slider-thumb{background:#8e44ad;}
+input[type=range].purple::-moz-range-thumb{background:#8e44ad;}
+
+/* ── Footer ── */
+.footer-bar{background:white;border-top:1px solid #ddd;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.footer-hint{font-size:13px;color:#7f8c8d;}
+.btn{padding:11px 26px;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s;}
+.btn-primary{background:#2980b9;color:white;}
+.btn-primary:hover{background:#2471a3;}
+.btn-primary:disabled{background:#bdc3c7;cursor:not-allowed;}
+.btn-success{background:#27ae60;color:white;}
+.btn-success:hover{background:#229954;}
+
+/* ── Screen 2 map ── */
+#screen2 .header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.map-wrap{flex:1;position:relative;min-height:0;}
+#map{width:100%;height:100%;}
+.legend{position:absolute;bottom:28px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:160px;}
+.legend-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
+.legend-gradient{height:12px;border-radius:3px;background:linear-gradient(to right,#d73027,#f46d43,#fdae61,#fee090,#ffffbf,#e0f3f8,#abd9e9,#74add1,#4575b4);margin-bottom:6px;}
+.legend-labels{display:flex;justify-content:space-between;font-size:11px;color:#7f8c8d;}
+.weights-summary{position:absolute;top:12px;right:12px;z-index:1000;background:white;border-radius:7px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);max-width:210px;max-height:calc(100vh - 120px);overflow-y:auto;}
+.weights-title{font-size:12px;font-weight:600;color:#2c3e50;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
+.weight-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:12px;}
+.weight-name{color:#5a6c7d;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.weight-val{font-weight:700;color:#2980b9;min-width:32px;text-align:right;}
+.weight-bar-bg{height:4px;background:#ecf0f1;border-radius:2px;margin-bottom:5px;}
+.weight-bar-fill{height:4px;background:#2980b9;border-radius:2px;}
+.success-message{display:none;padding:9px 14px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px;color:#155724;font-size:13px;font-weight:600;}
+.success-message.show{display:block;}
+.leaflet-tooltip.cell-tooltip{background:rgba(30,30,30,0.88);border:none;border-radius:5px;color:white;font-size:12px;padding:7px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.3);}
+.tt-score{font-size:16px;font-weight:700;margin-bottom:4px;}
+.tt-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;opacity:0.85;}
+
+#screen1 .body{flex:1;overflow-y:auto;padding:20px 28px 10px;}
+
+/* ── Screen 0 ── */
+#screen0,#screen2b{background:#f7f8fa;justify-content:center;align-items:center;}
+.landing-card{background:white;border-radius:14px;padding:48px 52px;max-width:620px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,0.10);text-align:center;}
+.landing-card h1{font-size:26px;color:#2c3e50;margin-bottom:14px;}
+.landing-card p{font-size:15px;color:#555;line-height:1.7;margin-bottom:14px;}
+.landing-card .btn{font-size:15px;padding:12px 36px;margin-top:10px;}
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;justify-content:center;align-items:center;}
+.modal-overlay.visible{display:flex;}
+.modal-box{background:white;border-radius:14px;padding:36px 42px;max-width:540px;width:90%;box-shadow:0 6px 32px rgba(0,0,0,0.18);}
+.modal-box h2{font-size:20px;color:#2c3e50;margin-bottom:14px;}
+.modal-box p{font-size:14px;color:#555;line-height:1.7;margin-bottom:12px;}
+.modal-box .btn{font-size:14px;padding:10px 28px;margin-top:6px;}
+/* ── Steppers ── */
+.stepper-wrap{display:flex;align-items:center;border:1px solid #dde1e7;border-radius:6px;overflow:hidden;margin-top:10px;}
+.stepper-btn{width:38px;height:38px;border:none;background:#f4f6f8;color:#2c3e50;font-size:20px;line-height:1;cursor:pointer;flex-shrink:0;transition:background 0.15s;user-select:none;}
+.stepper-btn:hover:not(:disabled){background:#e0e5ec;}
+.stepper-btn:disabled{opacity:0.3;cursor:not-allowed;}
+.stepper-val{flex:1;text-align:center;font-size:17px;font-weight:700;color:#2980b9;background:white;padding:0 4px;}
+.stepper-val.zero{color:#bbb;font-weight:400;}
+/* ── Screens/paint ── */
+.screen{display:none;flex-direction:column;height:100vh;}
+.screen.active{display:flex;}
+.map-wrap{flex:1;position:relative;min-height:0;}
+#map,#mapEdit{width:100%;height:100%;}
+#screen3 .map-wrap{height:calc(100vh - 120px);flex:1;}
+#screen3{display:none;flex-direction:column;height:100vh;}
+#screen3.active{display:flex;}
+#screen3{}
+.edit-instructions{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:1000;justify-content:center;align-items:center;}
+.edit-instructions.visible{display:flex;}
+.instructions-box{background:white;border-radius:12px;padding:30px 36px;max-width:460px;}
+.paint-toolbar{display:none;background:#fff;border-bottom:1px solid #ddd;padding:8px 16px;gap:16px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
+.paint-toolbar.visible{display:flex;}
+.tool-btn{padding:6px 14px;border:1px solid #ccc;border-radius:6px;background:#f8f8f8;cursor:pointer;}
+.tool-btn.active{background:#2c3e50;color:white;border-color:#2c3e50;}
+#mapEdit.paint-mode{cursor:crosshair;}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Screen 1 */
+  #screen1 .body { padding: 12px 14px 10px; }
+  .header { padding: 12px 16px; }
+  .header h1 { font-size: 16px; }
+  .section-label { margin: 14px 0 8px; }
+
+  /* Stepper buttons — larger touch targets */
+  .stepper-btn { width: 48px; height: 48px; font-size: 22px; }
+  .stepper-val { font-size: 16px; }
+
+  /* Urban / politics choice chips */
+  .urban-choice { font-size: 12px; padding: 8px 6px; }
+
+  /* Screen 2 header */
+  #screen2 .header { padding: 10px 14px; gap: 8px; }
+  #screen2 .header h1 { font-size: 14px; }
+  #screen2 .header p { display: none; }
+  #screen2 .header .btn { font-size: 12px; padding: 6px 12px; }
+
+  /* Weights summary — collapse on mobile */
+  .weights-summary { display: none; }
+
+  /* Screen 3 header */
+  #screen3 .header { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+  #screen3 .header .btn { font-size: 12px; padding: 6px 12px; }
+
+  /* Paint toolbar — bigger touch targets, more spacing */
+  .paint-toolbar { padding: 10px 12px; gap: 10px; }
+  .tool-btn { padding: 10px 16px; font-size: 14px; min-height: 44px; }
+
+  /* Landing card */
+  .landing-card { padding: 28px 22px; }
+  .landing-card h1 { font-size: 20px; }
+
+  /* Modal */
+  .modal-box { padding: 24px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SCREEN 0: Landing -->
+<div class="screen active" id="screen0">
+  <div class="landing-card">
+    <h1>Moving Preferences and Climate Change Mapping Exercise</h1>
+    <p>On the following page, you will build a personalized map of the lower 48 United States
+      showing which areas best match your preferences.</p>
+    <p>First, you will allocate points across factors that matter to you &mdash;
+      such as climate hazards, cost of living, place type, and more. You will have a total of
+      100 points to allocate. This will generate a map based on your priorities.</p>
+    <p>After seeing your map, you will have the opportunity to revise your
+      point allocations or make manual adjustments directly on the map before
+      submitting your final response.</p>
+    <button class="btn btn-primary" id="startBtn">Get Started &rarr;</button>
+  </div>
+</div>
+
+<!-- SCREEN 1 -->
+<div class="screen" id="screen1">
+  <div class="header">
+    <h1>Set Your Priorities</h1>
+    <p>You have 100 points to allocate. Assign more points to factors that matter most to you.
+    The resulting map calculates an area's suitability to your preferences by weighting these factors proportionally.</p>
+  </div>
+  <div class="body">
+
+    <div class="budget-bar-wrap">
+      <div class="budget-header">
+        <span class="budget-label">Points Remaining</span>
+        <span class="budget-remaining" id="budgetDisplay">100</span>
+      </div>
+      <div class="budget-track"><div class="budget-fill" id="budgetFill" style="width:100%"></div></div>
+      <div class="budget-subtext" id="budgetSubtext">Allocate all 100 points to continue.</div>
+    </div>
+
+    <!-- Climate hazards -->
+    <div class="section-label">Climate Hazards</div>
+    <div class="factors-grid" id="hazardGrid"></div>
+
+    <!-- Cost of living -->
+    <div class="section-label">Cost of Living</div>
+    <div class="factors-grid" id="costGrid"></div>
+
+    <!-- Urbanization -->
+    <div class="section-label">Place Type Preference</div>
+    <div class="factors-grid" id="urbanGrid"></div>
+
+
+    <!-- Weather -->
+    <div class="section-label">Weather Preference</div>
+    <div class="factors-grid" id="weatherGrid"></div>
+
+    <!-- Politics -->
+    <div class="section-label">Political Environment</div>
+    <div class="factors-grid" id="politicsGrid"></div>
+
+  </div>
+  <div class="footer-bar">
+    <span class="footer-hint" id="footerHint">0 of 100 points allocated</span>
+    <button class="btn btn-primary" id="proceedBtn" disabled>See My Map &rarr;</button>
+  </div>
+</div>
+
+<!-- SCREEN 2 -->
+<div class="screen" id="screen2">
+  <div class="header">
+    <div>
+      <h1>Your Personalized Climate Suitability Map</h1>
+      <p>Based on your priorities &mdash; blue = more suitable, red = less suitable</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="backBtn" style="padding:8px 18px;font-size:13px;">&#8592; Adjust Priorities</button>
+      <button class="btn btn-success" id="goToEditBtn">&#9998; Fine-Tune My Map &#8594;</button>
+      <div class="success-message" id="successMsg">Saved!</div>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="weights-summary" id="weightsSummary"></div>
+    <div class="legend">
+      <div class="legend-title">Suitability Score</div>
+      <div class="legend-gradient"></div>
+      <div class="legend-labels"><span>Low</span><span>High</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2B: Instructions before fine-tuning -->
+<div class="screen" id="screen2b">
+  <div class="landing-card">
+    <h1>Before You Fine-Tune Your Map</h1>
+    <p>The map you just saw was generated entirely from the point allocations you made,
+      so it only reflects the factors we asked about.</p>
+    <p>Take a moment to think about it. <strong>Does this map match where you would actually
+      want to live?</strong> Are there specific regions that look better or worse than you
+      would expect, given your preferences?</p>
+    <p>On the next page, you will be able to paint adjustments directly onto the map.
+      <strong>Raise</strong> areas that you would rate higher than the map does, and
+      <strong>lower</strong> areas that you would rate lower. Even small changes are helpful.
+      If the map already matches your preferences well, you can submit it as is.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn btn-primary" id="backToMapFrom2bBtn">&larr; Back to My Map</button>
+      <button class="btn btn-success" id="continueToEditBtn">Continue to Edit My Map &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3 -->
+<div class="screen" id="screen3">
+  <div class="header">
+    <button class="btn btn-primary" id="backToMapBtn" style="padding:8px 18px;font-size:13px;">&#8592; Back to Map</button>
+    <button class="btn btn-success" id="submitBtn">Submit &amp; Continue</button>
+  </div>
+  <div class="paint-toolbar" id="paintToolbar">
+    <label style="font-size:12px;font-weight:600;color:#555">Brush</label>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;color:#999">Sm</span>
+      <input type="range" id="brushSizeSlider" min="20" max="300" value="50" style="width:90px">
+      <span style="font-size:11px;color:#999">Lg</span>
+      <div id="brushPreview" style="width:18px;height:18px;border-radius:50%;background:rgba(44,62,80,0.25);border:2px solid #2c3e50;flex-shrink:0"></div>
+    </div>
+      <button class="tool-btn" id="panModeBtn" style="display:flex;align-items:center;gap:5px;"><span>&#10021;</span> Pan</button>
+      <div id="paintBtns" style="display:flex;gap:6px;">
+        <button class="tool-btn active" id="paintRaiseBtn">&#9650; Raise</button>
+        <button class="tool-btn" id="paintLowerBtn">&#9660; Lower</button>
+      </div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="tool-btn" id="paintUndoBtn" disabled>&#8617; Undo</button>
+      <button class="tool-btn" id="paintResetBtn">&#8635; Reset</button>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <div class="edit-instructions" id="editInstructions">
+      <div class="instructions-box" style="max-width:500px;width:92vw;">
+        <h3 style="margin-top:0">Fine-Tune Your Map</h3>
+        <p style="margin-bottom:10px;">Hold the mouse button (or finger) and drag to raise or lower
+           the suitability of specific areas. Switch between Raise and Lower using the toolbar.</p>
+        <!-- Animation canvas -->
+        <div style="border:1px solid #dde1e7;border-radius:8px;overflow:hidden;margin-bottom:14px;background:#f0f4f8;">
+          <canvas id="paintDemoCanvas" style="display:block;"></canvas>
+        </div>
+        <button class="btn btn-primary" id="startEditingBtn">Start Editing &#8594;</button>
+      </div>
+    </div>
+    <div id="mapEdit" style="width:100%;height:100%"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mapIntroModal">
+  <div class="modal-box">
+    <h2>Your Priority Map</h2>
+    <p>The map colors each area based on how well it matches your priorities. Higher-scoring areas appear in <strong>blue</strong>; lower-scoring areas in <strong>red</strong>.</p>
+    <p>Use <strong>&ldquo;&#8592; Adjust Priorities&rdquo;</strong> to go back and revise your point allocations at any time &mdash; the map will update automatically.</p>
+    <p>Use <strong>&ldquo;&#9998; Fine-Tune My Map&rdquo;</strong> to paint adjustments onto specific areas directly on the map.</p>
+    <button class="btn btn-primary" id="modalOkBtn">View My Map &rarr;</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="noEditsModal">
+  <div class="modal-box">
+    <h2>You haven&rsquo;t made any edits</h2>
+    <p>You haven&rsquo;t changed anything on the map yet. Take another look: does it match
+      where you would actually want to live? If any areas look too high or too low, you can
+      paint adjustments now.</p>
+    <p>If the map already matches your preferences, you can submit it as is.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="noEditsGoBackBtn">Go Back and Edit</button>
+      <button class="btn btn-success" id="noEditsSubmitBtn">Submit Without Edits</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+// ── Paint demo animation ─────────────────────────────────────────────────
+(function() {
+  var COLS=22,ROWS=10,TOOLBAR_H=40,TOTAL=5200;
+  var scores=[],startTime=null,animRunning=false;
+
+  function initScores(){
+    scores=[];
+    for(var r=0;r<ROWS;r++){scores[r]=[];for(var c=0;c<COLS;c++){var v=0.2+(c/COLS)*0.55+(Math.random()-.5)*.15;scores[r][c]=Math.max(.05,Math.min(.95,v));}}
+  }
+  initScores();
+
+  var STOPS=[[0,[215,25,28]],[.25,[253,174,97]],[.5,[255,255,191]],[.75,[171,217,233]],[1,[44,123,182]]];
+  function color(t){t=Math.max(0,Math.min(1,t));for(var i=1;i<STOPS.length;i++){if(t<=STOPS[i][0]){var lo=STOPS[i-1],hi=STOPS[i],f=(t-lo[0])/(hi[0]-lo[0]);return'rgb('+Math.round(lo[1][0]+f*(hi[1][0]-lo[1][0]))+','+Math.round(lo[1][1]+f*(hi[1][1]-lo[1][1]))+','+Math.round(lo[1][2]+f*(hi[1][2]-lo[1][2]))+')';}}return'rgb(44,123,182)';}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function ease(t){return t<.5?2*t*t:-1+(4-2*t)*t;}
+  function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
+
+  var raisePath=[{t:0,cx:.12,cr:.35},{t:.33,cx:.38,cr:.50},{t:.66,cx:.62,cr:.42},{t:1,cx:.85,cr:.60}];
+  var lowerPath=[{t:0,cx:.85,cr:.58},{t:.33,cx:.60,cr:.45},{t:.66,cx:.35,cr:.55},{t:1,cx:.12,cr:.38}];
+  function interp(path,p){p=Math.max(0,Math.min(1,p));for(var i=1;i<path.length;i++){if(p<=path[i].t){var f=(p-path[i-1].t)/(path[i].t-path[i-1].t);return{cx:lerp(path[i-1].cx,path[i].cx,f),cr:lerp(path[i-1].cr,path[i].cr,f)};}}return{cx:path[path.length-1].cx,cr:path[path.length-1].cr};}
+
+  function applyBrush(cellW,cellH,bx,by,mode){
+    var rad=cellW*2.5;
+    for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){var px=(c+.5)*cellW,py=TOOLBAR_H+(r+.5)*cellH,d=Math.sqrt((px-bx)*(px-bx)+(py-by)*(py-by));if(d<rad){var s=(1-d/rad)*.022;scores[r][c]=mode==='raise'?Math.min(.95,scores[r][c]+s):Math.max(.05,scores[r][c]-s);}}
+  }
+
+  function frame(ts){
+    if(!animRunning) return;
+    var canvas=document.getElementById('paintDemoCanvas');
+    if(!canvas){animRunning=false;return;}
+
+    // Size canvas on every frame from its wrapper — works once wrapper is visible
+    var wrap=canvas.parentElement;
+    var W=wrap.offsetWidth-2;
+    if(W<10){
+      // Still not laid out — try again next frame
+      requestAnimationFrame(frame);
+      return;
+    }
+    var H=Math.round(W*.52);
+    if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
+
+    var ctx=canvas.getContext('2d');
+    var cellW=W/COLS,cellH=(H-TOOLBAR_H)/ROWS;
+    var BTN_W=70,BTN_H=26,BTN_Y=7,raiseX=W/2-BTN_W-5,lowerX=W/2+5;
+
+    if(!startTime) startTime=ts;
+    var pct=((ts-startTime)%TOTAL)/TOTAL;
+    ctx.clearRect(0,0,W,H);
+
+    function drawGrid(){for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){ctx.fillStyle=color(scores[r][c]);ctx.fillRect(c*cellW+.5,TOOLBAR_H+r*cellH+.5,cellW-1,cellH-1);}}
+    function drawBar(active){
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,W,TOOLBAR_H);
+      ctx.fillStyle='#dde1e7';ctx.fillRect(0,TOOLBAR_H-1,W,1);
+      ctx.fillStyle='#666';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText('Paint mode:',10,TOOLBAR_H/2);
+      [['▲ Raise',raiseX,active==='raise'],['▼ Lower',lowerX,active==='lower']].forEach(function(b){
+        rr(ctx,b[1],BTN_Y,BTN_W,BTN_H,4);
+        ctx.fillStyle=b[2]?'#2c3e50':'#f8f8f8';ctx.fill();
+        ctx.strokeStyle=b[2]?'#2c3e50':'#ccc';ctx.lineWidth=1;ctx.stroke();
+        ctx.fillStyle=b[2]?'#fff':'#333';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(b[0],b[1]+BTN_W/2,BTN_Y+BTN_H/2);
+      });
+    }
+    function drawBrush(bx,by,mode,al){
+      var rad=cellW*2.5;
+      ctx.beginPath();ctx.arc(bx,by,rad,0,Math.PI*2);
+      ctx.strokeStyle='rgba(44,62,80,'+al*.85+')';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.beginPath();ctx.arc(bx,by,rad,0,Math.PI*2);
+      ctx.fillStyle=mode==='raise'?'rgba(44,123,182,'+al*.15+')':'rgba(215,25,28,'+al*.15+')';ctx.fill();
+    }
+    function drawCursor(cx,cy,down){
+      ctx.save();ctx.translate(cx,cy);ctx.fillStyle='#fff';ctx.strokeStyle='#222';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,14);ctx.lineTo(3.5,10.5);ctx.lineTo(5.5,15);ctx.lineTo(7,14.3);ctx.lineTo(5,9.5);ctx.lineTo(9,9.5);ctx.closePath();ctx.fill();ctx.stroke();
+      if(down){ctx.beginPath();ctx.arc(2,2,3,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fill();}
+      ctx.restore();
+    }
+
+    if(pct<0.38){
+      var p=ease(pct/0.38),pos=interp(raisePath,p),bx=pos.cx*W,by=TOOLBAR_H+pos.cr*(H-TOOLBAR_H);
+      var al=pct<.05?pct/.05:pct>.34?(0.38-pct)/.04:1;
+      applyBrush(cellW,cellH,bx,by,'raise');
+      drawGrid();drawBar('raise');drawBrush(bx,by,'raise',al);drawCursor(bx-7,by-5,true);
+    } else if(pct<0.52){
+      var tp=(pct-.38)/.14,lp=interp(raisePath,1);
+      var fx=lp.cx*W-7,fy=TOOLBAR_H+lp.cr*(H-TOOLBAR_H)-5,tx=lowerX+BTN_W*.5-7,ty=BTN_Y+BTN_H*.5-5;
+      var et=ease(Math.min(1,tp*1.5)),clicked=tp>.65;
+      drawGrid();drawBar(clicked?'lower':'raise');drawCursor(lerp(fx,tx,et),lerp(fy,ty,et),clicked&&tp<.92);
+    } else if(pct<0.90){
+      var lp2=ease((pct-.52)/.38),lpos=interp(lowerPath,lp2),lx=lpos.cx*W,ly=TOOLBAR_H+lpos.cr*(H-TOOLBAR_H);
+      var la=(pct-.52)<.05?(pct-.52)/.05:pct>.86?(0.90-pct)/.04:1;
+      applyBrush(cellW,cellH,lx,ly,'lower');
+      drawGrid();drawBar('lower');drawBrush(lx,ly,'lower',la);drawCursor(lx-7,ly-5,true);
+    } else {
+      var fade=(pct-.90)/.10,rs=ease(fade)*.12;
+      drawGrid();drawBar('lower');
+      for(var r2=0;r2<ROWS;r2++)for(var c2=0;c2<COLS;c2++){scores[r2][c2]+=(0.2+(c2/COLS)*.55-scores[r2][c2])*rs;}
+      if(fade>.95) initScores();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  window.startPaintDemo = function() {
+    animRunning = true;
+    startTime   = null;
+    initScores();
+    requestAnimationFrame(frame);
+  };
+})();
+
+</script>
+<script>
+var isEmbedded = window.self !== window.top;
+var BUDGET = 100;
+
+// ── Hold-to-repeat for stepper buttons ───────────────────────────────────
+function makeHoldable(btn, fn) {
+  if (!btn) return;
+  var holdTimer = null, holdInterval = null;
+  function start(e) {
+    e.preventDefault();
+    fn();
+    holdTimer = setTimeout(function() { holdInterval = setInterval(fn, 60); }, 400);
+  }
+  function stop() { clearTimeout(holdTimer); clearInterval(holdInterval); }
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('mouseup',    stop);
+  btn.addEventListener('mouseleave', stop);
+  btn.addEventListener('touchend',   stop);
+  btn.addEventListener('touchcancel',stop);
+}
+
+// ── Variable definitions ──────────────────────────────────────────────────
+// direction: -1 = invert (higher raw = worse), 1 = keep as-is (higher raw = better)
+var HAZARDS = [
+  { id: 'Drought',   label: 'Drought',   desc: 'Risk of prolonged drought conditions. Higher weight prioritizes safety from drought.',   direction: -1 },
+  { id: 'Wildfires', label: 'Wildfires', desc: 'Wildfire exposure and risk. Higher weight prioritizes safety from wildfires.',              direction: -1 },
+  { id: 'Flooding',  label: 'Flooding',  desc: 'Flood vulnerability. Higher weight prioritizes safety from floods.',                     direction: -1 },
+  { id: 'Storms',    label: 'Storms',    desc: 'Severe storm and hurricane exposure. Higher weight prioritizes safety from storms.',     direction: -1 }
+];
+
+var COST = [
+  { id: 'median_price', label: 'Cost of Living', desc: 'Median home price as a proxy for cost of living. Higher weight prioritizes affordability.', direction: -1 }
+];
+
+// Urbanization: one slider, radio selects which variable gets the weight
+var URBAN_OPTIONS = [
+  { id: 'urban',    label: 'Urban',    desc: 'Prefer cities and dense metro areas.' },
+  { id: 'suburban', label: 'Suburban', desc: 'Prefer suburban communities.' },
+  { id: 'rural',    label: 'Rural',    desc: 'Prefer rural or small-town settings.' }
+];
+var urbanChoice = null;   // 'urban' | 'suburban' | 'rural'
+var urbanWeight = 0;
+
+// Politics: two sliders, direction flips based on ideology
+// election_diff and state_election_diff = % lead by Democrats
+// Liberal: higher value = more desirable (direction +1)
+// Conservative: invert — higher Dem lead = less desirable (direction -1 => 1 - value)
+var politicsAlignment = null; // 'liberal' | 'conservative'
+var politicsWeights = { election_diff: 0, state_election_diff: 0 };
+
+// Weather
+var weatherDirections = { extreme_heat: null, extreme_cold: null };
+var weatherWeights   = { extreme_heat: 0,    extreme_cold: 0    };
+
+// Standard factor weights
+var weights = {};
+HAZARDS.concat(COST).forEach(function(f){ weights[f.id] = 0; });
+
+// ── Build hazard cards ────────────────────────────────────────────────────
+function buildSliderCard(container, factorList) {
+  factorList.forEach(function(f) {
+    var card = document.createElement('div');
+    card.className = 'factor-card';
+    card.id = 'card-' + f.id;
+    card.innerHTML =
+      '<div class="factor-top"><div class="factor-name">' + f.label + '</div></div>' +
+      '<div class="factor-desc">' + f.desc + '</div>' +
+      '<div class="stepper-wrap">' +
+        '<button class="stepper-btn" id="btn-minus-' + f.id + '">&#8722;</button>' +
+        '<div class="stepper-val zero" id="pts-' + f.id + '">0</div>' +
+        '<button class="stepper-btn" id="btn-plus-' + f.id + '">+</button>' +
+      '</div>' +
+      '<input type="range" min="0" max="100" value="0" id="slider-' + f.id + '" style="display:none" />';
+    container.appendChild(card);
+    (function(fid) {
+      function setV(v) {
+        v = Math.max(0, Math.min(v, BUDGET - getTotalAllocated(fid)));
+        weights[fid] = v;
+        document.getElementById('slider-' + fid).value = v;
+        updateAllUI();
+      }
+      makeHoldable(document.getElementById('btn-minus-' + fid), function() { setV(weights[fid]-1); });
+      makeHoldable(document.getElementById('btn-plus-'  + fid), function() { setV(weights[fid]+1); });
+      document.getElementById('slider-'    + fid).addEventListener('input', function() { setV(parseInt(this.value)); });
+    })(f.id);
+  });
+}
+
+buildSliderCard(document.getElementById('hazardGrid'), HAZARDS);
+buildSliderCard(document.getElementById('costGrid'), COST);
+
+// ── Weather cards ────────────────────────────────────────────────────────
+(function() {
+  var grid = document.getElementById('weatherGrid');
+  var weatherVars = [
+    { id: 'extreme_heat', label: 'Extreme Heat',
+      desc: 'Maximum temperature. Choose whether more heat is desirable, then allocate points.',
+      optA: { val: 'better', text: 'More heat is better' },
+      optB: { val: 'worse',  text: 'Less heat is better' } },
+    { id: 'extreme_cold', label: 'Extreme Cold',
+      desc: 'Minimum temperature. Choose whether cold winters are desirable, then allocate points.',
+      optA: { val: 'better', text: 'I prefer cold winters' },
+      optB: { val: 'worse',  text: 'I prefer mild winters' } }
+  ];
+  weatherVars.forEach(function(wv) {
+    var card = document.createElement('div');
+    card.className = 'factor-card';
+    card.id = 'card-' + wv.id;
+    card.innerHTML =
+      '<div class="factor-top"><div class="factor-name">' + wv.label + '</div></div>' +
+      '<div class="factor-desc">' + wv.desc + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+        '<div class="urban-choice" id="wdir-' + wv.id + '-better" style="flex:1;font-size:12px;">' + wv.optA.text + '</div>' +
+        '<div class="urban-choice" id="wdir-' + wv.id + '-worse" style="flex:1;font-size:12px;">' + wv.optB.text + '</div>' +
+      '</div>' +
+      '<div id="wslider-wrap-' + wv.id + '" style="display:none;">' +
+        '<div class="stepper-wrap">' +
+          '<button class="stepper-btn" id="btn-minus-' + wv.id + '">&#8722;</button>' +
+          '<div class="stepper-val zero" id="pts-' + wv.id + '">0</div>' +
+          '<button class="stepper-btn" id="btn-plus-' + wv.id + '">+</button>' +
+        '</div>' +
+        '<input type="range" min="0" max="100" value="0" id="slider-' + wv.id + '" style="display:none" />' +
+      '</div>';
+    grid.appendChild(card);
+    ['better','worse'].forEach(function(val) {
+      document.getElementById('wdir-' + wv.id + '-' + val).addEventListener('click', function() {
+        weatherDirections[wv.id] = val;
+        ['better','worse'].forEach(function(v) {
+          document.getElementById('wdir-' + wv.id + '-' + v).classList.toggle('selected', v === val);
+        });
+        document.getElementById('wslider-wrap-' + wv.id).style.display = 'block';
+        updateAllUI();
+      });
+    });
+    (function(id) {
+      function setW(v) {
+        v = Math.max(0, Math.min(v, BUDGET - getTotalAllocated('__weather_' + id + '__')));
+        weatherWeights[id] = v;
+        document.getElementById('slider-' + id).value = v;
+        updateAllUI();
+      }
+      makeHoldable(document.getElementById('btn-minus-' + id), function() { setW(weatherWeights[id]-1); });
+      makeHoldable(document.getElementById('btn-plus-'  + id), function() { setW(weatherWeights[id]+1); });
+      document.getElementById('slider-'    + id).addEventListener('input', function() { setW(parseInt(this.value)); });
+    })(wv.id);
+  });
+})();
+
+// ── Urbanization card ─────────────────────────────────────────────────────
+(function() {
+  var grid = document.getElementById('urbanGrid');
+  var card = document.createElement('div');
+  card.className = 'urban-card';
+  card.id = 'card-urban-group';
+  card.innerHTML =
+    '<div class="urban-top">' +
+      '<div class="urban-name">Place Type</div>' +
+      '<div class="urban-pts" id="pts-urban-group">0</div>' +
+    '</div>' +
+    '<div class="urban-desc">Select the type of place you prefer to live, then allocate points based on how important this is to you.</div>' +
+    '<div class="urban-choices">' +
+      URBAN_OPTIONS.map(function(o) {
+        return '<div class="urban-choice" id="uchoice-' + o.id + '" data-id="' + o.id + '">' +
+          '<div style="font-size:13px;font-weight:600">' + o.label + '</div>' +
+          '<div style="font-size:11px;font-weight:400;opacity:0.8;margin-top:2px">' + o.desc + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<div id="urban-slider-wrap" style="display:none">' +
+      '<div class="stepper-wrap">' +
+        '<button class="stepper-btn" id="btn-minus-urban">&#8722;</button>' +
+        '<div class="stepper-val zero" id="pts-urban-group">0</div>' +
+        '<button class="stepper-btn" id="btn-plus-urban">+</button>' +
+      '</div>' +
+      '<input type="range" min="0" max="100" value="0" id="slider-urban-group" style="display:none" />' +
+    '</div>';
+  grid.appendChild(card);
+
+  // Choice buttons
+  URBAN_OPTIONS.forEach(function(o) {
+    document.getElementById('uchoice-' + o.id).addEventListener('click', function() {
+      urbanChoice = o.id;
+      URBAN_OPTIONS.forEach(function(x) {
+        document.getElementById('uchoice-' + x.id).classList.toggle('selected', x.id === o.id);
+      });
+      document.getElementById('urban-slider-wrap').style.display = 'block';
+      updateAllUI();
+    });
+  });
+
+  function setU(v){v=Math.max(0,Math.min(v,BUDGET-getTotalAllocated('__urban__')));urbanWeight=v;document.getElementById('slider-urban-group').value=v;updateAllUI();}
+  document.getElementById('slider-urban-group').addEventListener('input',function(){setU(parseInt(this.value));});
+  makeHoldable(document.getElementById('btn-minus-urban'), function(){setU(urbanWeight-1);});
+  makeHoldable(document.getElementById('btn-plus-urban'), function(){setU(urbanWeight+1);});
+})();
+
+// ── Politics card ─────────────────────────────────────────────────────────
+(function() {
+  var grid = document.getElementById('politicsGrid');
+  var card = document.createElement('div');
+  card.className = 'politics-card';
+  card.id = 'card-politics-group';
+  card.innerHTML =
+    '<div class="politics-top">' +
+      '<div class="politics-name">Political Environment</div>' +
+    '</div>' +
+    '<div class="politics-desc">How would you describe your political views? This determines how local and state election results factor into your suitability score.</div>' +
+    '<div class="politics-choices">' +
+      '<div class="politics-choice" id="pchoice-liberal" data-id="liberal">More Liberal</div>' +
+      '<div class="politics-choice" id="pchoice-conservative" data-id="conservative">More Conservative</div>' +
+    '</div>' +
+    '<div class="politics-sliders" id="politics-sliders-wrap">' +
+      '<div class="pol-slider-row">' +
+        '<div class="pol-slider-label">' +
+          '<span class="pol-slider-name">County-level elections</span>' +
+          '<span class="pol-slider-pts" id="pts-election_diff">0</span>' +
+        '</div>' +
+        '<div class="pol-slider-sub">How much do you prioritize the political lean of the specific county?</div>' +
+        '<div class="stepper-wrap">' +
+          '<button class="stepper-btn" id="btn-minus-election_diff">&#8722;</button>' +
+          '<div class="stepper-val zero" id="pts-election_diff">0</div>' +
+          '<button class="stepper-btn" id="btn-plus-election_diff">+</button>' +
+        '</div>' +
+        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-election_diff" style="display:none" />' +
+      '</div>' +
+      '<div class="pol-slider-row">' +
+        '<div class="pol-slider-label">' +
+          '<span class="pol-slider-name">State-level elections</span>' +
+        '</div>' +
+        '<div class="pol-slider-sub">How much do you prioritize the political lean of the state overall?</div>' +
+        '<div class="stepper-wrap">' +
+          '<button class="stepper-btn" id="btn-minus-state_election_diff">&#8722;</button>' +
+          '<div class="stepper-val zero" id="pts-state_election_diff">0</div>' +
+          '<button class="stepper-btn" id="btn-plus-state_election_diff">+</button>' +
+        '</div>' +
+        '<input type="range" class="purple" min="0" max="100" value="0" id="slider-state_election_diff" style="display:none" />' +
+      '</div>' +
+    '</div>';
+  grid.appendChild(card);
+
+  ['liberal','conservative'].forEach(function(id) {
+    document.getElementById('pchoice-' + id).addEventListener('click', function() {
+      politicsAlignment = id;
+      ['liberal','conservative'].forEach(function(x) {
+        document.getElementById('pchoice-' + x).classList.toggle('selected', x === id);
+      });
+      document.getElementById('politics-sliders-wrap').classList.add('visible');
+      updateAllUI();
+    });
+  });
+
+  ['election_diff','state_election_diff'].forEach(function(id){
+    (function(pid){
+      function setP(v){v=Math.max(0,Math.min(v,BUDGET-getTotalAllocated('__pol_'+pid+'__')));politicsWeights[pid]=v;document.getElementById('slider-'+pid).value=v;updateAllUI();}
+      document.getElementById('slider-'+pid).addEventListener('input',function(){setP(parseInt(this.value));});
+      makeHoldable(document.getElementById('btn-minus-'+pid), function(){setP(politicsWeights[pid]-1);});
+      makeHoldable(document.getElementById('btn-plus-'+pid), function(){setP(politicsWeights[pid]+1);});
+    })(id);
+  });
+})();
+
+// ── Budget helpers ────────────────────────────────────────────────────────
+// Returns total allocated EXCLUDING the given id (pass special token for group items)
+function getTotalAllocated(excludeId) {
+  var total = 0;
+  HAZARDS.concat(COST).forEach(function(f) {
+    if (f.id !== excludeId) total += weights[f.id];
+  });
+  if (excludeId !== '__urban__') total += urbanWeight;
+  if (excludeId !== '__pol_election_diff__') total += politicsWeights.election_diff;
+  if (excludeId !== '__pol_state_election_diff__') total += politicsWeights.state_election_diff;
+  if (excludeId !== '__weather_extreme_heat__') total += weatherWeights.extreme_heat;
+  if (excludeId !== '__weather_extreme_cold__') total += weatherWeights.extreme_cold;
+  return total;
+}
+
+function getTotalAllocatedAll() {
+  var total = 0;
+  HAZARDS.concat(COST).forEach(function(f){ total += weights[f.id]; });
+  total += urbanWeight;
+  total += politicsWeights.election_diff + politicsWeights.state_election_diff;
+  total += weatherWeights.extreme_heat + weatherWeights.extreme_cold;
+  return total;
+}
+
+// ── Update all UI ─────────────────────────────────────────────────────────
+function updateSliderFill(slider, value) {
+  var pct = value;
+  slider.style.background = 'linear-gradient(to right, #2980b9 0%, #2980b9 ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
+}
+
+function updateSliderFillPurple(slider, value) {
+  var pct = value;
+  slider.style.background = 'linear-gradient(to right, #8e44ad 0%, #8e44ad ' + pct + '%, #ecf0f1 ' + pct + '%, #ecf0f1 100%)';
+}
+
+function updateAllUI() {
+  var allocated = getTotalAllocatedAll();
+  var remaining = BUDGET - allocated;
+
+  // Budget bar
+  var bd = document.getElementById('budgetDisplay');
+  var bf = document.getElementById('budgetFill');
+  bd.textContent = remaining;
+  bd.className = 'budget-remaining' + (remaining === 0 ? ' zero' : '');
+  bf.style.width = (remaining / BUDGET * 100) + '%';
+  bf.className = 'budget-fill' + (remaining === 0 ? ' zero' : '');
+  document.getElementById('budgetSubtext').textContent = remaining === 0
+    ? 'All points allocated. You can proceed.'
+    : remaining + ' point' + (remaining !== 1 ? 's' : '') + ' remaining — allocate all 100 to continue.';
+  document.getElementById('footerHint').textContent = allocated + ' of 100 points allocated';
+
+  // Proceed: all 100 spent AND urbanization choice made AND politics alignment chosen (if any points assigned)
+  var urbanOk = urbanWeight === 0 || urbanChoice !== null;
+  var politicsOk = (politicsWeights.election_diff === 0 && politicsWeights.state_election_diff === 0) || politicsAlignment !== null;
+  var weatherOk = (weatherWeights.extreme_heat === 0 || weatherDirections.extreme_heat !== null) &&
+                  (weatherWeights.extreme_cold === 0 || weatherDirections.extreme_cold !== null);
+  document.getElementById('proceedBtn').disabled = (remaining !== 0 || !urbanOk || !politicsOk || !weatherOk);
+
+  // Standard factor cards
+  HAZARDS.concat(COST).forEach(function(f) {
+    var v = weights[f.id];
+    var el = document.getElementById('pts-' + f.id);
+    el.textContent = v; el.className = 'stepper-val'+(v===0?' zero':'');
+    document.getElementById('card-' + f.id).className = 'factor-card'+(v>0?' has-points':'');
+    var rem = BUDGET-getTotalAllocated(f.id);
+    var pb = document.getElementById('btn-plus-'+f.id); var mb = document.getElementById('btn-minus-'+f.id);
+    if(pb) pb.disabled=(rem<=0); if(mb) mb.disabled=(v<=0);
+  });
+
+  // Urban group
+  var uv=urbanWeight; var uel=document.getElementById('pts-urban-group');
+  uel.textContent=uv; uel.className='stepper-val'+(uv===0?' zero':'');
+  document.getElementById('card-urban-group').className='urban-card'+(uv>0?' has-points':'');
+  var ur=BUDGET-getTotalAllocated('__urban__');
+  var upb=document.getElementById('btn-plus-urban'); var umb=document.getElementById('btn-minus-urban');
+  if(upb)upb.disabled=(ur<=0); if(umb)umb.disabled=(uv<=0);
+
+  // Politics steppers
+  ['election_diff','state_election_diff'].forEach(function(id){
+    var v=politicsWeights[id]; var el=document.getElementById('pts-'+id);
+    el.textContent=v; el.className='stepper-val'+(v===0?' zero':'');
+    var rem=BUDGET-getTotalAllocated('__pol_'+id+'__');
+    var pb=document.getElementById('btn-plus-'+id); var mb=document.getElementById('btn-minus-'+id);
+    if(pb)pb.disabled=(rem<=0); if(mb)mb.disabled=(v<=0);
+  });
+  // Weather steppers
+  ['extreme_heat','extreme_cold'].forEach(function(id){
+    var v=weatherWeights[id]; var el=document.getElementById('pts-'+id);
+    if(!el)return; el.textContent=v; el.className='stepper-val'+(v===0?' zero':'');
+    document.getElementById('card-'+id).className='factor-card'+(v>0?' has-points':'');
+    var rem=BUDGET-getTotalAllocated('__weather_'+id+'__');
+    var pb=document.getElementById('btn-plus-'+id); var mb=document.getElementById('btn-minus-'+id);
+    if(pb)pb.disabled=(rem<=0); if(mb)mb.disabled=(v<=0);
+  });
+  var polTotal=politicsWeights.election_diff+politicsWeights.state_election_diff;
+  document.getElementById('card-politics-group').className='politics-card'+(polTotal>0?' has-points':'');
+}
+
+updateAllUI();
+
+// ── Map ───────────────────────────────────────────────────────────────────
+var map = null, gridLayer = null, geojsonData = null;
+
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+  }).addTo(map);
+}
+
+Promise.all([
+  fetch('grid_geometry.topojson').then(function(r) { return r.json(); }),
+  fetch('grid_attributes.json').then(function(r) { return r.json(); })
+])
+  .then(function(results) {
+    var topology = results[0];
+    var attrs = results[1];
+    var objectName = Object.keys(topology.objects)[0];
+    var fc = topojson.feature(topology, topology.objects[objectName]);
+    // Attributes are stored as parallel arrays aligned by index to the geometry
+    // features (both files were generated together and verified to share the
+    // same poly_id order), so we zip them back onto each feature here.
+    fc.features.forEach(function(f, i) {
+      Object.keys(attrs).forEach(function(k) { f.properties[k] = attrs[k][i]; });
+    });
+    geojsonData = fc;
+  })
+  .catch(function(e) { console.error('Failed to load grid data:', e); });
+
+var COLOR_STOPS = [
+  [0.000,'#d73027'],[0.125,'#f46d43'],[0.250,'#fdae61'],[0.375,'#fee090'],
+  [0.500,'#ffffbf'],[0.625,'#e0f3f8'],[0.750,'#abd9e9'],[0.875,'#74add1'],[1.000,'#4575b4']
+];
+function interpolateColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  for (var i = 0; i < COLOR_STOPS.length - 1; i++) {
+    var t0=COLOR_STOPS[i][0], t1=COLOR_STOPS[i+1][0];
+    if (t >= t0 && t <= t1) {
+      var f=(t-t0)/(t1-t0);
+      var parse=function(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; };
+      var c0=parse(COLOR_STOPS[i][1]), c1=parse(COLOR_STOPS[i+1][1]);
+      return 'rgb('+[0,1,2].map(function(j){ return Math.round(c0[j]+f*(c1[j]-c0[j])); }).join(',')+')';
+    }
+  }
+  return COLOR_STOPS[COLOR_STOPS.length-1][1];
+}
+
+function computeComposite(props) {
+  var total = 0, wsum = 0;
+
+  // Hazards + cost (invert: direction = -1)
+  HAZARDS.concat(COST).forEach(function(f) {
+    var w = weights[f.id] / 100.0;
+    if (w === 0) return;
+    var raw = props[f.id] !== undefined ? props[f.id] : 0.5;
+    var oriented = 1 - raw; // direction -1
+    total += w * oriented; wsum += w;
+  });
+
+  // Urbanization: only the chosen variable
+  if (urbanWeight > 0 && urbanChoice) {
+    var w = urbanWeight / 100.0;
+    var raw = props[urbanChoice] !== undefined ? props[urbanChoice] : 0.5;
+    total += w * raw; wsum += w; // direction +1
+  }
+
+  // Politics: flip direction for conservatives
+  ['election_diff','state_election_diff'].forEach(function(id) {
+    var w = politicsWeights[id] / 100.0;
+    if (w === 0) return;
+    var raw = props[id] !== undefined ? props[id] : 0.5;
+    var oriented = politicsAlignment === 'conservative' ? (1 - raw) : raw;
+    total += w * oriented; wsum += w;
+  });
+
+  ['extreme_heat','extreme_cold'].forEach(function(id) {
+    var w = weatherWeights[id]/100.0;
+    if (w===0||!weatherDirections[id]) return;
+    var raw = props[id]!==undefined?props[id]:0.5;
+    var oriented = weatherDirections[id]==='worse'?(1-raw):raw;
+    total+=w*oriented; wsum+=w;
+  });
+  return wsum > 0 ? total / wsum : 0.5;
+}
+
+function renderMap() {
+  initMap();
+  if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
+
+  var scores = geojsonData.features.map(function(f){ return computeComposite(f.properties); });
+  var minS = Math.min.apply(null, scores), maxS = Math.max.apply(null, scores);
+
+  gridLayer = L.geoJSON(geojsonData, {
+    renderer: L.canvas(),
+    style: function(feature) {
+      var raw = computeComposite(feature.properties);
+      var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
+      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 };
+    },
+    onEachFeature: function(feature, layer) {
+      layer.on('mouseover', function(e) {
+        var props = feature.properties;
+        var comp = computeComposite(props);
+        var t = maxS > minS ? (comp - minS) / (maxS - minS) : 0.5;
+        // Top contributing vars for tooltip
+        var contribs = [];
+        HAZARDS.concat(COST).forEach(function(f) {
+          if (weights[f.id] > 0) contribs.push({ label: f.label, w: weights[f.id], val: props[f.id] });
+        });
+        if (urbanWeight > 0 && urbanChoice) {
+          contribs.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight, val: props[urbanChoice] });
+        }
+        ['election_diff','state_election_diff'].forEach(function(id) {
+          if (politicsWeights[id] > 0) {
+            contribs.push({ label: id === 'election_diff' ? 'County elections' : 'State elections', w: politicsWeights[id], val: props[id] });
+          }
+        });
+        contribs.sort(function(a,b){ return b.w-a.w; });
+        var rows = contribs.slice(0,3).map(function(c){
+          return '<div class="tt-row"><span>'+c.label+'</span><span>'+(c.val*100).toFixed(0)+'</span></div>';
+        }).join('');
+        layer.bindTooltip('<div class="tt-score">Score: '+(comp*100).toFixed(1)+'</div>'+rows,
+          { className: 'cell-tooltip', sticky: true }).openTooltip(e.latlng);
+        layer.setStyle({ fillOpacity: 0.95, weight: 1.5, color: '#2c3e50' });
+      });
+      layer.on('mouseout', function() {
+        layer.closeTooltip();
+        var raw = computeComposite(feature.properties);
+        var t = maxS > minS ? (raw - minS) / (maxS - minS) : 0.5;
+        layer.setStyle({ fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5 });
+      });
+    }
+  }).addTo(map);
+
+  // Weights summary panel
+  var rows = [];
+  HAZARDS.concat(COST).forEach(function(f){ if (weights[f.id]>0) rows.push({label:f.label, w:weights[f.id]}); });
+  if (urbanWeight > 0 && urbanChoice) rows.push({ label: urbanChoice.charAt(0).toUpperCase()+urbanChoice.slice(1), w: urbanWeight });
+  if (politicsWeights.election_diff > 0) rows.push({ label: 'County elections', w: politicsWeights.election_diff });
+  if (politicsWeights.state_election_diff > 0) rows.push({ label: 'State elections', w: politicsWeights.state_election_diff });
+  if (weatherWeights.extreme_heat>0) rows.push({label:'Extreme heat',w:weatherWeights.extreme_heat});
+  if (weatherWeights.extreme_cold>0) rows.push({label:'Extreme cold',w:weatherWeights.extreme_cold});
+  rows.sort(function(a,b){ return b.w-a.w; });
+  var align = politicsAlignment ? ' <span style="font-size:10px;color:#8e44ad;font-weight:600">('+politicsAlignment+')</span>' : '';
+  document.getElementById('weightsSummary').innerHTML =
+    '<div class="weights-title">Your Weights</div>' +
+    rows.map(function(r){
+      return '<div class="weight-row"><span class="weight-name">'+r.label+'</span><span class="weight-val">'+r.w+'</span></div>' +
+             '<div class="weight-bar-bg"><div class="weight-bar-fill" style="width:'+r.w+'%"></div></div>';
+    }).join('') + align;
+
+  setTimeout(function(){ map.invalidateSize(); }, 50);
+}
+
+
+
+// ── Paint engine ─────────────────────────────────────────────────────────
+var mapEdit = null, gridLayerEdit = null;
+var paintActive = false, isPainting = false, paintMode = 'raise', panMode = false;
+var brushRadiusKm = 50, lastPaintLatLng = null, paintInterval = null;
+var paintedThisStroke = {}, editedCells = {}, undoStack = [];
+var paintMinS = 0, paintMaxS = 1;
+
+function paintCellColor(score) {
+  var t = (paintMaxS > paintMinS) ? (score - paintMinS) / (paintMaxS - paintMinS) : 0.5;
+  t = Math.max(0, Math.min(1, t));
+  return interpolateColor(t);
+}
+
+function recolorLayers(layers) {
+  var target = layers || [];
+  if (!layers) { gridLayerEdit.eachLayer(function(l) { target.push(l); }); }
+  target.forEach(function(l) {
+    var s = l._paintScore !== undefined ? l._paintScore : l._baseScore;
+    l.setStyle({ fillColor: paintCellColor(s) });
+  });
+}
+
+function cellsInBrush(latlng) {
+  var R = 6371, hits = [];
+  if (!gridLayerEdit) return hits;
+  gridLayerEdit.eachLayer(function(l) {
+    var c = l.getBounds().getCenter();
+    var dLat = (c.lat - latlng.lat) * Math.PI / 180;
+    var dLng = (c.lng - latlng.lng) * Math.PI / 180;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(latlng.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*
+            Math.sin(dLng/2)*Math.sin(dLng/2);
+    if (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) <= brushRadiusKm) hits.push(l);
+  });
+  return hits;
+}
+
+function nudgeTick() {
+  if (!isPainting || !lastPaintLatLng) return;
+  var layers = cellsInBrush(lastPaintLatLng), changed = [];
+  layers.forEach(function(l) {
+    var cur = l._paintScore;
+    var next = paintMode === 'raise' ? Math.min(1, cur + 0.02) : Math.max(0, cur - 0.02);
+    if (next !== cur) { l._paintScore = next; editedCells[l._leaflet_id] = true; changed.push(l); }
+  });
+  if (changed.length) recolorLayers(changed);
+}
+
+function stopPainting() {
+  if (isPainting) {
+    isPainting = false;
+    clearInterval(paintInterval); paintInterval = null;
+    paintedThisStroke = {};
+  }
+}
+
+function renderEditMap() {
+  if (mapEdit) { mapEdit.remove(); mapEdit = null; }
+  gridLayerEdit = null; editedCells = {}; undoStack = [];
+
+  // Give #mapEdit an explicit height before Leaflet measures it
+  var mapEl = document.getElementById('mapEdit');
+  var headerH = 56 + 48; // approx header + toolbar height
+  mapEl.style.height = (window.innerHeight - headerH) + 'px';
+
+  mapEdit = L.map('mapEdit', {
+    zoomControl: true,
+    dragging: false, tap: false,
+    touchZoom: false, scrollWheelZoom: false,
+    doubleClickZoom: false, boxZoom: false
+  }).setView([39.5, -98.35], 4);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  }).addTo(mapEdit);
+
+  var scores = geojsonData.features.map(function(f) { return computeComposite(f.properties); });
+  paintMinS = Math.min.apply(null, scores);
+  paintMaxS = Math.max.apply(null, scores);
+
+  gridLayerEdit = L.geoJSON(geojsonData, {
+    renderer: L.canvas(),
+    style: function(feature) {
+      var raw = computeComposite(feature.properties);
+      var t = paintMaxS > paintMinS ? (raw - paintMinS) / (paintMaxS - paintMinS) : 0.5;
+      return { fillColor: interpolateColor(t), fillOpacity: 0.75, color: 'rgba(0,0,0,0.1)', weight: 0.5, stroke: true };
+    },
+    onEachFeature: function(feature, layer) {
+      layer.on('mousedown', function(e) {
+        if (!paintActive) return;
+        L.DomEvent.stopPropagation(e);
+        if (!isPainting) {
+          isPainting = true; paintedThisStroke = {}; lastPaintLatLng = e.latlng;
+          var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
+          undoStack.push(snap); if (undoStack.length > 200) undoStack.shift();
+          document.getElementById('paintUndoBtn').disabled = false;
+          nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+        }
+      });
+      layer.on('mousemove', function(e) { if (paintActive && isPainting) lastPaintLatLng = e.latlng; });
+      layer.on('mouseup', stopPainting);
+    }
+  }).addTo(mapEdit);
+
+  gridLayerEdit.eachLayer(function(l) {
+    l._paintScore = computeComposite(l.feature.properties);
+    l._baseScore  = l._paintScore;
+  });
+
+  mapEdit.on('mouseup', stopPainting);
+  document.addEventListener('mouseup', stopPainting);
+
+  // Touch support
+  var container = mapEdit.getContainer();
+  function getTouchLatLng(e) {
+    var touch = e.touches[0] || e.changedTouches[0];
+    var rect = container.getBoundingClientRect();
+    return mapEdit.containerPointToLatLng(L.point(touch.clientX - rect.left, touch.clientY - rect.top));
+  }
+  L.DomEvent.on(container, 'touchstart', function(e) {
+    if (!paintActive) return;
+    L.DomEvent.preventDefault(e);
+    lastPaintLatLng = getTouchLatLng(e);
+    if (!isPainting) {
+      isPainting = true; paintedThisStroke = {};
+      var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
+      undoStack.push(snap); if (undoStack.length > 200) undoStack.shift();
+      document.getElementById('paintUndoBtn').disabled = false;
+      nudgeTick(); paintInterval = setInterval(nudgeTick, 80);
+    }
+  });
+  L.DomEvent.on(container, 'touchmove', function(e) {
+    if (!paintActive || !isPainting) return;
+    L.DomEvent.preventDefault(e);
+    lastPaintLatLng = getTouchLatLng(e);
+  });
+  L.DomEvent.on(container, 'touchend', stopPainting);
+  L.DomEvent.on(container, 'touchcancel', stopPainting);
+
+  mapEdit.fitBounds(gridLayerEdit.getBounds());
+  setTimeout(function() { mapEdit.invalidateSize({animate:false}); }, 100);
+  setTimeout(function() {
+    mapEdit.invalidateSize({animate:false});
+    if (gridLayerEdit) mapEdit.fitBounds(gridLayerEdit.getBounds());
+  }, 400);
+
+  document.getElementById('paintUndoBtn').disabled = true;
+}
+
+// ── Screen 0 / 1 / 2 navigation ──────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', function() {
+  document.getElementById('screen0').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
+
+document.getElementById('proceedBtn').addEventListener('click', function() {
+  document.getElementById('screen1').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  document.getElementById('mapIntroModal').classList.add('visible');
+  setTimeout(function() {
+    renderMap();
+    if (geojsonData) {
+      preScores = {};
+      geojsonData.features.forEach(function(f) {
+        preScores[f.properties.poly_id] = parseFloat(computeComposite(f.properties).toFixed(4));
+      });
+    }
+  }, 50);
+});
+
+document.getElementById('modalOkBtn').addEventListener('click', function() {
+  document.getElementById('mapIntroModal').classList.remove('visible');
+});
+
+document.getElementById('backBtn').addEventListener('click', function() {
+  document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen1').classList.add('active');
+});
+
+// ── Screen 3 navigation ───────────────────────────────────────────────────
+document.getElementById('startEditingBtn').addEventListener('click', function() {
+  document.getElementById('editInstructions').classList.remove('visible');
+  document.getElementById('paintToolbar').classList.add('visible');
+  document.getElementById('mapEdit').classList.add('paint-mode');
+  panMode = false;
+  paintActive = true;
+  document.getElementById('panModeBtn').classList.remove('active');
+  document.getElementById('paintBtns').style.opacity = '1';
+  document.getElementById('paintBtns').style.pointerEvents = '';
+});
+
+document.getElementById('goToEditBtn').addEventListener('click', function() {
+  document.getElementById('screen2').classList.remove('active');
+  document.getElementById('screen2b').classList.add('active');
+});
+
+document.getElementById('backToMapFrom2bBtn').addEventListener('click', function() {
+  document.getElementById('screen2b').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  setTimeout(function(){ if(map) map.invalidateSize(); }, 60);
+});
+
+document.getElementById('continueToEditBtn').addEventListener('click', function() {
+  document.getElementById('screen2b').classList.remove('active');
+  document.getElementById('screen3').classList.add('active');
+  document.getElementById('editInstructions').classList.add('visible');
+  document.getElementById('paintToolbar').classList.remove('visible');
+  document.getElementById('mapEdit').classList.remove('paint-mode');
+  paintActive = false;
+  // Start demo animation — double rAF ensures screen3 is painted and laid out
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      if (window.startPaintDemo) window.startPaintDemo();
+    });
+  });
+  function tryRender() {
+    if (!geojsonData) { setTimeout(tryRender, 100); return; }
+    requestAnimationFrame(function() { setTimeout(renderEditMap, 50); });
+  }
+  tryRender();
+});
+
+document.getElementById('backToMapBtn').addEventListener('click', function() {
+  stopPainting(); paintActive = false; panMode = false;
+  document.getElementById('panModeBtn').classList.remove('active');
+  document.getElementById('mapEdit').classList.remove('paint-mode');
+  document.getElementById('screen3').classList.remove('active');
+  document.getElementById('screen2').classList.add('active');
+  setTimeout(function(){ if(map) map.invalidateSize(); }, 60);
+});
+
+document.getElementById('panModeBtn').addEventListener('click', function() {
+  panMode = !panMode;
+  this.classList.toggle('active', panMode);
+  // Show/hide paint buttons
+  document.getElementById('paintBtns').style.opacity = panMode ? '0.4' : '1';
+  document.getElementById('paintBtns').style.pointerEvents = panMode ? 'none' : '';
+  // Show/hide brush controls
+  document.getElementById('brushSizeSlider').parentElement.style.opacity = panMode ? '0.4' : '1';
+  if (mapEdit) {
+    if (panMode) {
+      paintActive = false;
+      mapEdit.dragging.enable();
+      mapEdit.scrollWheelZoom.enable();
+      mapEdit.touchZoom.enable();
+      document.getElementById('mapEdit').classList.remove('paint-mode');
+    } else {
+      paintActive = true;
+      mapEdit.dragging.disable();
+      mapEdit.scrollWheelZoom.disable();
+      mapEdit.touchZoom.disable();
+      document.getElementById('mapEdit').classList.add('paint-mode');
+    }
+  }
+});
+
+document.getElementById('paintRaiseBtn').addEventListener('click', function() {
+  paintMode = 'raise';
+  this.classList.add('active');
+  document.getElementById('paintLowerBtn').classList.remove('active');
+});
+document.getElementById('paintLowerBtn').addEventListener('click', function() {
+  paintMode = 'lower';
+  this.classList.add('active');
+  document.getElementById('paintRaiseBtn').classList.remove('active');
+});
+document.getElementById('brushSizeSlider').addEventListener('input', function() {
+  brushRadiusKm = parseInt(this.value);
+  var px = 10 + (brushRadiusKm / 300) * 28;
+  var bp = document.getElementById('brushPreview');
+  bp.style.width = px + 'px'; bp.style.height = px + 'px';
+});
+
+document.getElementById('paintUndoBtn').addEventListener('click', function() {
+  if (!undoStack.length) return;
+  var snap = undoStack.pop();
+  gridLayerEdit.eachLayer(function(l) { if (snap[l._leaflet_id] !== undefined) l._paintScore = snap[l._leaflet_id]; });
+  editedCells = {};
+  gridLayerEdit.eachLayer(function(l) { if (l._paintScore !== l._baseScore) editedCells[l._leaflet_id] = true; });
+  this.disabled = undoStack.length === 0;
+  recolorLayers(null);
+});
+
+document.getElementById('paintResetBtn').addEventListener('click', function() {
+  if (!confirm('Reset all manual edits?')) return;
+  var snap = {}; gridLayerEdit.eachLayer(function(l) { snap[l._leaflet_id] = l._paintScore; });
+  undoStack.push(snap);
+  document.getElementById('paintUndoBtn').disabled = false;
+  gridLayerEdit.eachLayer(function(l) { l._paintScore = l._baseScore; });
+  editedCells = {}; recolorLayers(null);
+});
+
+var noEditsConfirmed = false;
+
+document.getElementById('noEditsGoBackBtn').addEventListener('click', function() {
+  noEditsConfirmed = false;
+  document.getElementById('noEditsModal').classList.remove('visible');
+});
+
+document.getElementById('noEditsSubmitBtn').addEventListener('click', function() {
+  noEditsConfirmed = true;
+  document.getElementById('noEditsModal').classList.remove('visible');
+  document.getElementById('submitBtn').click();
+});
+
+document.getElementById('submitBtn').addEventListener('click', function() {
+  var btn = this;
+
+  // Warn (once) if the respondent has not edited anything
+  var nEdited = 0;
+  if (gridLayerEdit) {
+    gridLayerEdit.eachLayer(function(l) { if (editedCells[l._leaflet_id]) nEdited++; });
+  }
+  if (nEdited === 0 && !noEditsConfirmed) {
+    document.getElementById('noEditsModal').classList.add('visible');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  // Build weight vector
+  var wv = {};
+  HAZARDS.concat(COST).forEach(function(f) { wv[f.id] = weights[f.id]; });
+  wv.urban = urbanWeight;
+  wv.election_diff = politicsWeights.election_diff;
+  wv.state_election_diff = politicsWeights.state_election_diff;
+  wv.extreme_heat = weatherWeights.extreme_heat;
+  wv.extreme_cold = weatherWeights.extreme_cold;
+
+  // Build edited-cells list (post scores only for cells that were manually changed)
+  var editedList = [];
+  if (gridLayerEdit) {
+    gridLayerEdit.eachLayer(function(l) {
+      var cid = l.feature.properties.poly_id;
+      if (editedCells[l._leaflet_id]) {
+        editedList.push({ poly_id: cid, post_score: parseFloat(l._paintScore.toFixed(4)) });
+      }
+    });
+  }
+
+  var payload = {
+    type: 'priorityMapData',
+    weights: wv,
+    urban_preference: urbanChoice,
+    political_alignment: politicsAlignment,
+    weather_heat_direction: weatherDirections.extreme_heat,
+    weather_cold_direction: weatherDirections.extreme_cold,
+    edited_cells: editedList,   // sparse: only manually painted cells
+    // pre-scores fully reconstructable from weights + grid in R
+    autoAdvance: true
+  };
+
+  // Debug: log what we're sending
+  console.log('[MAP] posting message:', JSON.stringify(payload).slice(0, 200));
+  console.log('[MAP] parent origin:', document.referrer);
+
+  // Try postMessage to parent
+  try {
+    window.parent.postMessage(payload, '*');
+    console.log('[MAP] postMessage sent');
+  } catch(e) {
+    console.error('[MAP] postMessage failed:', e);
+  }
+
+  btn.textContent = 'Saved ✓';
+});
+
+</script></body>
+</html>
